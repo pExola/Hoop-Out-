@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hoop-Out | Streetball Combat | Handoff Tecnico</title>
+    <style>
+        :root {
+            --bg-color: #0c0a14;
+            --surface-color: #151122;
+            --card-color: #1e1830;
+            --border-color: #2e2648;
+            --text-primary: #f0edf6;
+            --text-secondary: #9a92b0;
+            --accent-pink: #ff2a85;
+            --accent-cyan: #00f0ff;
+            --accent-yellow: #ffd700;
+            --code-bg: #120e1e;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding-bottom: 48px;
+        }
+        header {
+            background-color: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            padding: 32px 24px 24px;
+            text-align: center;
+        }
+        .header-tag {
+            display: inline-block;
+            background-color: rgba(255, 42, 133, 0.14);
+            color: var(--accent-pink);
+            border: 1px solid rgba(255, 42, 133, 0.35);
+            border-radius: 4px;
+            padding: 3px 10px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        h1 {
+            font-size: 1.85rem;
+            color: #ffffff;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.3px;
+        }
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 0.98rem;
+            max-width: 760px;
+            margin: 0 auto 18px;
+            line-height: 1.5;
+        }
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+        nav a {
+            color: var(--text-primary);
+            text-decoration: none;
+            background-color: var(--card-color);
+            border: 1px solid var(--border-color);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: border-color 0.15s ease, color 0.15s ease;
+        }
+        nav a:hover {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+        main {
+            max-width: 980px;
+            margin: 28px auto 0;
+            padding: 0 20px;
+        }
+        section {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        h2 {
+            font-size: 1.25rem;
+            color: #ffffff;
+            font-weight: 600;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+        h3 {
+            font-size: 1rem;
+            color: var(--accent-cyan);
+            font-weight: 600;
+            margin: 18px 0 10px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .card {
+            background-color: var(--card-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 14px;
+        }
+        .script-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .script-name {
+            font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+        .script-badge {
+            font-size: 0.72rem;
+            padding: 2px 7px;
+            border-radius: 4px;
+            background-color: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .script-desc {
+            font-size: 0.86rem;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+        .item-box {
+            background-color: var(--card-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+        .item-title {
+            font-weight: 600;
+            color: #ffffff;
+            font-size: 0.95rem;
+            margin-bottom: 6px;
+        }
+        .item-path {
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 0.8rem;
+            background-color: var(--code-bg);
+            color: var(--accent-pink);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 8px;
+            display: inline-block;
+        }
+        .item-desc {
+            font-size: 0.86rem;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+        .item-desc ul {
+            list-style: none;
+            margin-top: 6px;
+        }
+        .item-desc li {
+            position: relative;
+            padding-left: 14px;
+            margin-bottom: 4px;
+        }
+        .item-desc li::before {
+            content: "\2022";
+            position: absolute;
+            left: 0;
+            color: var(--accent-pink);
+        }
+        .prompt-container {
+            position: relative;
+            background-color: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 16px;
+            margin-top: 12px;
+        }
+        pre {
+            font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.84rem;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.5;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background-color: var(--accent-pink);
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.15s ease;
+        }
+        .copy-btn:hover {
+            opacity: 0.88;
+        }
+        .copy-btn.copied {
+            background-color: var(--accent-cyan);
+            color: #0c0a14;
+        }
+        footer {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-top: 24px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-tag">Unity 2D | Handoff Tecnico</div>
+        <h1>Hoop-Out: Streetball Combat</h1>
+        <p class="subtitle">Guia de referencia tecnica para desenvolvedores e agentes de IA continuarem o projeto. Contem a estrutura dos scripts, pontos de customizacao, dependencias e protocolo de desenvolvimento.</p>
+        <nav>
+            <a href="#scripts">Scripts</a>
+            <a href="#customizacao">Customizacao</a>
+            <a href="#dependencias">Dependencias</a>
+            <a href="#protocolo-ia">Protocolo IA</a>
+        </nav>
+    </header>
+
+    <main>
+        <section id="scripts">
+            <h2>Scripts do Projeto</h2>
+
+            <h3>Jogabilidade e Personagens</h3>
+            <div class="grid">
+                <div class="card">
+                    <div class="script-header">
+                        <span class="script-name">PlayerController.cs</span>
+                        <span class="script-badge">Jogador</span>
+                    </div>
+                    <div class="script-desc">Controla o jogador em perspectiva traseira: toques simples para arremesso (+2 pontos), segurar para enterrada (+3 pontos), gestos de swipe lateral para esquiva com janela de invulnerabilidade e animacoes procedurais via DOTween.</div>
+                </div>
+                <div class="card">
+                    <div class="script-header">
+                        <span class="script-name">BossController.cs</span>
+                        <span class="script-badge">Chefe</span>
+                    </div>
+                    <div class="script-desc">Gerencia o chefe 'The Brick': ciclo de ataque telegrafado com leitura de esquiva do jogador, fintas com penalidade para esquivas falsas, estado atordoado 'Ankle Breaker' e finalizacoes na cesta.</div>
+                </div>
+                <div class="card">
+                    <div class="script-header">
+                        <span class="script-name">HoopBot.cs</span>
+                        <span class="script-badge">Autonomo</span>
+                    </div>
+                    <div class="script-desc">Agente autonomo embutido para testes de QA automatizados. Detecta o estado do chefe e executa esquivas precisas, leitura de fintas e ataques carregados na janela de atordoamento.</div>
+                </div>
+            </div>
+
+            <h3>Combate, Feedback e Audio</h3>
+            <div class="grid">
+                <div class="card">
+                    <div class="script-header">
+                        <span class="script-name">HitFlash.cs</span>
+                        <span class="script-badge">Visual</span>
+                    </div>
+                    <div class="script-desc">Aplica temporariamente um flash branco brilhante nos sprites do jogador ou do chefe ao sofrer impactos ou ataques.</div>
+                </div>
+                <div class="card">
+                    <div class="script-header">
+                        <span class="script-name">VFXManager.cs</span>
+                        <span class="script-badge">Efeitos</span>
+                    </div>
+                    <div class="script-desc">Centraliza o spawn de textos flutuantes com contorno escuro e escala dinamica, faiscas de impacto e linhas de velocidade com fade durante enterradas.</div>
+                </div>
+                <div class="card">
+                    <div class="script-header">
+                        <span class="script-name">FloatingText.cs</span>
+                        <span class="script-badge">Feedback</span>
+                    </div>
+                    <div class="script-desc">Controla o ciclo de vida dos textos flutuantes no espaco de mundo, aplicando elevacao suave, escala de impacto e desvanecimento rapido.</div>
+                </div>
+                <div class="card">
+                    <div class="script-header">
+                        <span class="script-name">SpeedLinesEffect.cs</span>
+                        <span class="script-badge">Cinematica</span>
+                    </div>
+                    <div class="script-desc">Efeito visual de linhas de velocidade radiais ativado durante a enterrada para acentuar a sensacao de velocidade e impacto no aro.</div>
+                </div>
+                <div class="card">
+                    <div class="script-header">
+                        <span class="script-name">HoopAudio.cs</span>
+                        <span class="script-badge">Audio</span>
+                    </div>
+                    <div class="script-desc">Gerenciador de audio do jogo. Reproduz efeitos reais de basquete (quique, squeak de tenis no piso, swish da rede, cravada no aro, whoosh de esquiva, apito e reacoes da torcida) e trilha sonora hip-hop urbana em loop continuo.</div>
+                </div>
+            </div>
+
+            <h3>Interface, Camera e Sistema</h3>
+            <div class="grid">
+                <div class="card">
+                    <div class="script-header">
+                        <span class="script-name">MatchManager.cs</span>
+                        <span class="script-badge">Sistema</span>
+                    </div>
+                    <div class="script-desc">Coordena o ciclo completo da partida (60 segundos), pontuacao comparada, sistema de combos, tutorial guiado interativo, feedbacks contextuais e telas de resultado com sombras de alto contraste.</div>
+                </div>
+                <div class="card">
+                    <div class="script-header">
+                        <span class="script-name">NeonPulse.cs</span>
+                        <span class="script-badge">Interface</span>
+                    </div>
+                    <div class="script-desc">Aplica pulsacao procedural de escala nos titulos e mantem a sombra inferior escura estavel para garantir 100% de legibilidade dos textos.</div>
+                </div>
+                <div class="card">
+                    <div class="script-header">
+                        <span class="script-name">HoopCamera.cs</span>
+                        <span class="script-badge">Camera</span>
+                    </div>
+                    <div class="script-desc">Ajusta dinamicamente a abertura ortografica para enquadramento retrato (9:16) e executa trepidacoes de tela em acertos e enterradas.</div>
+                </div>
+            </div>
+
+            <h3>Ferramentas de Editor</h3>
+            <div class="grid">
+                <div class="card">
+                    <div class="script-header">
+                        <span class="script-name">SceneSetup.cs</span>
+                        <span class="script-badge">Editor</span>
+                    </div>
+                    <div class="script-desc">Script de automacao executavel no menu Tools > Hoop-Out > Setup Complete Scene. Cria a quadra, personagens, iluminacao 2D, interface completa com botoes gradientes e vincula todas as referencias.</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="customizacao">
+            <h2>Pontos de Customizacao</h2>
+
+            <div class="item-box">
+                <div class="item-title">Sprites e Arte dos Personagens</div>
+                <div class="item-path">Assets/Sprites/GamePrototype/</div>
+                <div class="item-desc">
+                    Para trocar os visuais do jogo, substitua os arquivos mantendo as dimensoes e nomes ou reatribua os campos no SceneSetup:
+                    <ul>
+                        <li><b>Chefe (The Brick):</b> Boss_Idle.png, Boss_Windup_Fake.png, Boss_Windup_Attack.png, Boss_Stunned.png.</li>
+                        <li><b>Jogador:</b> Player_Back.png, Player_Charging.png, Player_Dodge_Left.png, Player_Dodge_Right.png.</li>
+                        <li><b>Interface e Quadra:</b> Environment_Full.png, Button_Start_Gradient.png, Button_Restart_Gradient.png.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="item-box">
+                <div class="item-title">Efeitos Sonoros e Musica</div>
+                <div class="item-path">Assets/Audio/</div>
+                <div class="item-desc">
+                    Os arquivos utilizam formatos padrao 16-bit 44.1kHz stereo (.wav):
+                    <ul>
+                        <li><b>Basquete:</b> sfx_dribble.wav (quique da bola), sfx_squeak.wav (atrito do tenis), sfx_swish.wav (rede), sfx_slam.wav (enterrada no aro), sfx_dodge.wav (whoosh de esquiva), sfx_whistle.wav (apito de inicio e fim).</li>
+                        <li><b>Torcida e Clima:</b> sfx_crowd_cheer.wav (comemoracao em cestas e vitoria), sfx_crowd_ooh.wav (reacao a fintas e atordoamentos), sfx_defense_chant.wav (ritmo de torcida).</li>
+                        <li><b>Trilha Sonora:</b> bgm_streetball_beat.wav (beat hip-hop de rua reproduzido em loop a 0.5f de volume).</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="item-box">
+                <div class="item-title">Parametros de Combate e Balanceamento</div>
+                <div class="item-path">Assets/Scripts/ (BossController.cs, MatchManager.cs, PlayerController.cs)</div>
+                <div class="item-desc">
+                    Variaveis numericas de equilibrio:
+                    <ul>
+                        <li><b>Janela de Esquiva:</b> windupDuration (1.4s a 1.8s) e stunDuration (3.2s) em BossController.cs.</li>
+                        <li><b>Tempo de Partida:</b> matchDuration (60.0s) em MatchManager.cs.</li>
+                        <li><b>Carga da Enterrada:</b> minChargeTime (0.5s) e maxChargeTime (1.8s) em PlayerController.cs.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="dependencias">
+            <h2>Dependencias</h2>
+
+            <div class="item-box">
+                <div class="item-title">TextMesh Pro</div>
+                <div class="item-desc">
+                    Renderizacao de fontes com distanciamento vetorial (SDF), suporte a contornos (Outline) escuros de alto contraste e redimensionamento dinamico (Auto Sizing) em elementos de pontuacao e feedbacks flutuantes.
+                </div>
+            </div>
+
+            <div class="item-box">
+                <div class="item-title">DOTween (Demigiant)</div>
+                <div class="item-path">Assets/Plugins/Demigiant/DOTween/</div>
+                <div class="item-desc">
+                    Motor de animacao procedural e tweens responsavel pelas movimentacoes do chefe, pulsos de interface, fades de tela, trepidacao de camera e rotinas de atordoamento.
+                </div>
+            </div>
+
+            <div class="item-box">
+                <div class="item-title">Unity MCP Anklebreaker</div>
+                <div class="item-desc">
+                    Ponte de comunicacao via protocolo MCP no Unity Editor, permitindo inspecao de cena, execucao de rotinas no editor, monitoramento de compilacao e geracao automatizada de builds.
+                </div>
+            </div>
+        </section>
+
+        <section id="protocolo-ia">
+            <h2>Protocolo de Desenvolvimento para IA</h2>
+            <div class="item-desc">Utilize o bloco abaixo ao instruir novos agentes de IA a trabalharem no projeto:</div>
+
+            <div class="prompt-container">
+                <button class="copy-btn" onclick="copyProtocol()">Copiar Protocolo</button>
+                <pre id="ia-protocol">Voce e um especialista em Unity 2D e esta assumindo o desenvolvimento do Hoop-Out (Unity 6000.3.10f1).
+
+CONTEXTO DO JOGO E ARQUITETURA:
+- Visao Geral: Streetball Combat arcade 2D para mobile Portrait (9:16). O jogador atua na parte inferior com vista traseira; o chefe 'The Brick' atua no garrafao em direcao a cesta.
+- Ciclo de Partida (MatchManager.cs): 60 segundos por rodada. Vence quem fizer mais pontos.
+- Mecanica do Jogador (PlayerController.cs):
+  * Toque simples: arremesso rapido (+2 pontos, Swish).
+  * Segurar e soltar: arremesso carregado / enterrada (+3 pontos, Slam Dunk) com linhas de velocidade radiais.
+  * Swipe lateral (esquerda/direita): esquiva com iframe e cooldown para desviar das investidas do chefe.
+- Mecanica do Chefe (BossController.cs):
+  * Investida (Windup Attack): avanca em um dos lados. O jogador precisa esquivar para o lado oposto para aplicar 'ANKLE BREAKER' e atordoar o chefe.
+  * Finta (Windup Fake): finge investida. Se o jogador esquivar por engano, toma cesta (+2 The Brick). Se aguardar firme, ganha abertura ('FAKE READ!').
+- Feedback e Juice (VFXManager.cs, HoopAudio.cs, HoopCamera.cs):
+  * Audio natural de basquete (quiques, squeaks de tenis, swish de rede, cravadas no aro, apito e reacoes da torcida).
+  * Textos flutuantes com contorno preto nitido e escala de impacto.
+  * Tela de Game Over com textos de alto contraste (amarelo/vermelho com sombra escura de alta definicao).
+
+REGRAS DE DESENVOLVIMENTO OBRIGATORIAS:
+1. CODIGO SEM COMENTARIOS: Nenhum arquivo C# (.cs) pode conter comentarios de codigo (//, /* */ ou ///).
+2. ZERO DEBUG LOGS: Nenhum script deve conter chamadas Debug.Log, Debug.LogWarning ou Debug.LogError.
+3. IDIOMA DO JOGO: Todos os textos em tela (HUD, feedbacks, botoes, tutoriais) devem permanecer estritamente em ingles.
+4. VALIDACAO: Apos qualquer alteracao de script, valide se a compilacao contem 0 erros e se o comportamento na cena permanece intacto.
+5. CONSERVACAO DE ARQUITETURA: Mantenha a montagem procedural da cena centralizada em SceneSetup.cs.</pre>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        Hoop-Out | Documento Tecnico Autocontido
+    </footer>
+
+    <script>
+        function copyProtocol() {
+            const text = document.getElementById('ia-protocol').innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                btn.innerText = 'Copiado!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.innerText = 'Copiar Protocolo';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
