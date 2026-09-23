@@ -23,25 +23,19 @@ public class MatchManager : MonoBehaviour
     [SerializeField] private Slider attackTimingSlider;
     [SerializeField] private GameObject hudPanel;
 
-    [SerializeField] private GameObject tutorialInstructionPanel;
-    [SerializeField] private TMP_Text tutorialStepTitle;
-    [SerializeField] private TMP_Text tutorialStepBody;
-
-    [SerializeField] private GameObject tutorialPanel;
+    [SerializeField] private GameObject startMenuPanel;
     [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private TMP_Text gameOverTitleText;
     [SerializeField] private TMP_Text gameOverTitleShadowText;
     [SerializeField] private TMP_Text gameOverSubtitleText;
     [SerializeField] private TMP_Text gameOverScoreText;
     [SerializeField] private Button startButton;
-    [SerializeField] private Button tutorialButton;
     [SerializeField] private Button restartButton;
 
     [Header("Drible livre")]
     [SerializeField] private float openDistance = 1.15f;
 
     public bool IsPlaying { get; private set; }
-    public bool IsTutorialActive { get; private set; }
     public bool HasBall { get; private set; }
     public float OpenDistance => openDistance;
     public int PlayerScore { get; private set; }
@@ -50,7 +44,6 @@ public class MatchManager : MonoBehaviour
 
     private float timeRemaining;
     private Coroutine hitStopCoroutine;
-    private Coroutine tutorialRoutine;
     private Coroutine feedbackCoroutine;
 
     private void Awake()
@@ -59,21 +52,16 @@ public class MatchManager : MonoBehaviour
         Time.timeScale = 1f;
         if (Instance == null) Instance = this;
         else { Destroy(gameObject); return; }
-#if UNITY_EDITOR
-        PlayerPrefs.DeleteKey("HoopOut_TutorialCompleted");
-#endif
     }
 
     private void Start()
     {
         if (startButton != null) startButton.onClick.AddListener(StartMatch);
-        if (tutorialButton != null) tutorialButton.onClick.AddListener(StartGuidedTutorial);
         if (restartButton != null) restartButton.onClick.AddListener(RestartGame);
 
         if (attackTimingSlider != null) attackTimingSlider.gameObject.SetActive(false);
-        if (tutorialInstructionPanel != null) tutorialInstructionPanel.SetActive(false);
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
-        if (tutorialPanel != null) tutorialPanel.SetActive(true);
+        if (startMenuPanel != null) startMenuPanel.SetActive(true);
         if (hudPanel != null) hudPanel.SetActive(false);
 
         HasBall = true;
@@ -100,27 +88,11 @@ public class MatchManager : MonoBehaviour
 
     public void StartMatch()
     {
-        if (PlayerPrefs.GetInt("HoopOut_TutorialCompleted", 0) == 0)
-        {
-            StartGuidedTutorial();
-        }
-        else
-        {
-            StartMatchReal();
-        }
-    }
-
-    public void StartGuidedTutorial()
-    {
-        if (tutorialRoutine != null) StopCoroutine(tutorialRoutine);
-        tutorialRoutine = StartCoroutine(GuidedTutorialRoutine());
+        StartMatchReal();
     }
 
     public void StartMatchReal()
     {
-        IsTutorialActive = false;
-        if (tutorialInstructionPanel != null) tutorialInstructionPanel.SetActive(false);
-
         PlayerScore = 0;
         BossScore = 0;
         ComboStreak = 0;
@@ -129,7 +101,7 @@ public class MatchManager : MonoBehaviour
         HasBall = true;
         ResetCourt();
 
-        if (tutorialPanel != null) tutorialPanel.SetActive(false);
+        if (startMenuPanel != null) startMenuPanel.SetActive(false);
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
         if (hudPanel != null) hudPanel.SetActive(true);
 
@@ -142,91 +114,6 @@ public class MatchManager : MonoBehaviour
         UpdateScoreUI();
         UpdateComboUI();
         ShowFeedback("BORA!", Color.green);
-    }
-
-    private IEnumerator GuidedTutorialRoutine()
-    {
-        IsTutorialActive = true;
-        IsPlaying = true;
-        PlayerScore = 0;
-        BossScore = 0;
-        ComboStreak = 0;
-        timeRemaining = matchDuration;
-        HasBall = true;
-
-        if (tutorialPanel != null) tutorialPanel.SetActive(false);
-        if (gameOverPanel != null) gameOverPanel.SetActive(false);
-        if (hudPanel != null) hudPanel.SetActive(true);
-        if (tutorialInstructionPanel != null) tutorialInstructionPanel.SetActive(true);
-
-        UpdateScoreUI();
-        UpdateTimerUI(matchDuration);
-        UpdateComboUI();
-        ResetCourt();
-
-        ShowTutorialInstruction("PASSO 1/3: O DRIBLE", "Deslize para <color=#00F0FF>MOVIMENTAR</color> o jogador!\n← ou → (lado), ↑ (avança), ↓ (recua).\n[Teclado: WASD / Setas]");
-        float t = 0f;
-        int swipeBaseline = 0;
-        if (player != null) swipeBaseline = player.SwipeCount;
-        while (player == null || player.SwipeCount < swipeBaseline + 4)
-        {
-            if (!IsPlaying) yield break;
-            t += Time.deltaTime;
-            if (t > 20f) break;
-            yield return null;
-        }
-        ShowFeedback("DRIBLE AFINADO!", Color.cyan);
-
-        ShowTutorialInstruction("PASSO 2/3: FURE A DEFESA", "Avance pegando o aro e <color=#FFE600>DESVIE</color> do Tijolo.\nCrie espaço na área de arremesso!");
-        t = 0f;
-        while (!(player != null && player.InScoringArea && PlayerIsOpen()))
-        {
-            if (!IsPlaying) yield break;
-            t += Time.deltaTime;
-            if (t > 12f)
-            {
-                ShowTutorialInstruction("PASSO 2/3: FURE A DEFESA", "Mude de direção bruscamente para <color=#FFE600>FURAR</color> a marcação!\nChegue perto do aro com o Tijolo longe.");
-                t = 0f;
-            }
-            yield return null;
-        }
-        ShowFeedback("FUROU A DEFESA!", Color.cyan);
-
-        ShowTutorialInstruction("PASSO 3/3: PONTUE", "Na área, mãos longe do Tijolo:\n<color=#00F0FF>[TOQUE]</color> Arremesso (+2 pts)\n<color=#FFE600>[SEGURE]</color> ENTERRADA (+3 pts)!");
-        t = 0f;
-        while (PlayerScore <= 0)
-        {
-            if (!IsPlaying) yield break;
-            t += Time.deltaTime;
-            if (t > 15f)
-            {
-                ShowTutorialInstruction("PASSO 3/3: PONTUE", "Crie espaço com o drible e segure no chute!\n<color=#FFE600>[SEGURE]</color> = enterrada, <color=#00F0FF>[TOQUE]</color> = arremesso.");
-                t = 0f;
-            }
-            yield return null;
-        }
-
-        ShowTutorialInstruction("TUTORIAL CONCLUÍDO!", "<color=#FFE600>PRONTO PARA O ASFALTO!</color>\nMostra quem manda na quadra!");
-        ShowFeedback("O JOGO COMEÇOU!", Color.green);
-        yield return new WaitForSeconds(2.4f);
-
-        PlayerPrefs.SetInt("HoopOut_TutorialCompleted", 1);
-        PlayerPrefs.Save();
-
-        StartMatchReal();
-    }
-
-    public void ShowTutorialInstruction(string title, string body)
-    {
-        if (tutorialInstructionPanel != null) tutorialInstructionPanel.SetActive(true);
-        if (tutorialStepTitle != null) tutorialStepTitle.text = title;
-        if (tutorialStepBody != null) tutorialStepBody.text = body;
-        if (tutorialInstructionPanel != null)
-        {
-            tutorialInstructionPanel.transform.DOKill();
-            tutorialInstructionPanel.transform.localScale = Vector3.one * 1.05f;
-            tutorialInstructionPanel.transform.DOScale(1f, 0.2f).SetEase(Ease.OutBack);
-        }
     }
 
     public void OnPlayerAttack(AttackType type)
@@ -256,7 +143,6 @@ public class MatchManager : MonoBehaviour
         ComboStreak++;
         UpdateComboUI();
         float comboPitch = 1f + Mathf.Min(ComboStreak * 0.1f, 0.5f);
-        if (IsTutorialActive) comboPitch = 1.15f;
         ExecuteAttackHit(type, comboPitch);
         if (IsPlaying) StartCoroutine(ResetAfterScoreRoutine());
     }
@@ -270,33 +156,15 @@ public class MatchManager : MonoBehaviour
             VFXManager.Instance.ShowFloatingText(floatingMsg, Color.red, player.VisualPosition + new Vector3(0, 1.2f, 0), 1.2f);
         }
 
-        if (IsTutorialActive)
-        {
-            StartCoroutine(TutorialFailRoutine());
-            return;
-        }
-
         HasBall = false;
         if (boss != null) boss.OnStealPossession("BOLA PERDIDA!");
         if (player != null) player.TriggerHit();
         StartCoroutine(BossCounterRoutine("O TIJOLO PUNIU O ERRO! +2"));
     }
 
-    private IEnumerator TutorialFailRoutine()
-    {
-        yield return new WaitForSeconds(0.5f);
-        if (!IsPlaying) yield break;
-        ResetCourt();
-    }
-
     public void OnBossSteal()
     {
         if (!IsPlaying || !HasBall) return;
-        if (IsTutorialActive)
-        {
-            ResetCourt();
-            return;
-        }
 
         HasBall = false;
         if (boss != null) boss.OnStealPossession("ROUBOU A BOLA!");

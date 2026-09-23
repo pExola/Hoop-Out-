@@ -356,60 +356,6 @@ public static class SceneSetup
 
         sliderObj.SetActive(false);
 
-        GameObject tutBannerBorder = new GameObject("Tutorial_Banner_Border", typeof(Image));
-        tutBannerBorder.transform.SetParent(hudPanel.transform, false);
-        Image tbBorderImg = tutBannerBorder.GetComponent<Image>();
-        tbBorderImg.color = new Color(1f, 0f, 0.5f, 0.95f);
-        RectTransform tbbRt = tutBannerBorder.GetComponent<RectTransform>();
-        tbbRt.anchorMin = new Vector2(0.5f, 0.5f);
-        tbbRt.anchorMax = new Vector2(0.5f, 0.5f);
-        tbbRt.anchoredPosition = new Vector2(0, -175);
-        tbbRt.sizeDelta = new Vector2(390, 136);
-
-        GameObject tutBannerInner = new GameObject("Tutorial_Banner_Inner", typeof(Image));
-        tutBannerInner.transform.SetParent(tutBannerBorder.transform, false);
-        Image tbInnerImg = tutBannerInner.GetComponent<Image>();
-        tbInnerImg.color = new Color(0.04f, 0.02f, 0.09f, 0.98f);
-        RectTransform tbiRt = tutBannerInner.GetComponent<RectTransform>();
-        tbiRt.anchorMin = Vector2.zero;
-        tbiRt.anchorMax = Vector2.one;
-        tbiRt.offsetMin = new Vector2(2.5f, 2.5f);
-        tbiRt.offsetMax = new Vector2(-2.5f, -2.5f);
-
-        GameObject tutTitleObj = new GameObject("Title", typeof(TextMeshProUGUI));
-        tutTitleObj.transform.SetParent(tutBannerInner.transform, false);
-        TextMeshProUGUI tutTitleTmp = tutTitleObj.GetComponent<TextMeshProUGUI>();
-        if (libFont != null) tutTitleTmp.font = libFont;
-        tutTitleTmp.fontStyle = FontStyles.Bold;
-        tutTitleTmp.text = "PASSO 1/3: A FINTA";
-        tutTitleTmp.fontSize = 18;
-        tutTitleTmp.alignment = TextAlignmentOptions.Center;
-        tutTitleTmp.color = new Color(1f, 0.92f, 0f);
-        RectTransform ttRt = tutTitleObj.GetComponent<RectTransform>();
-        ttRt.anchorMin = new Vector2(0.5f, 1f);
-        ttRt.anchorMax = new Vector2(0.5f, 1f);
-        ttRt.pivot = new Vector2(0.5f, 1f);
-        ttRt.anchoredPosition = new Vector2(0, -10);
-        ttRt.sizeDelta = new Vector2(370, 26);
-
-        GameObject tutBodyObj = new GameObject("Body", typeof(TextMeshProUGUI));
-        tutBodyObj.transform.SetParent(tutBannerInner.transform, false);
-        TextMeshProUGUI tutBodyTmp = tutBodyObj.GetComponent<TextMeshProUGUI>();
-        if (libFont != null) tutBodyTmp.font = libFont;
-        tutBodyTmp.fontStyle = FontStyles.Bold;
-        tutBodyTmp.text = "O Tijolo vai brilhar amarelo! Segure a posição!";
-        tutBodyTmp.fontSize = 14.5f;
-        tutBodyTmp.lineSpacing = 5;
-        tutBodyTmp.alignment = TextAlignmentOptions.Center;
-        tutBodyTmp.color = new Color(0.95f, 0.96f, 1f);
-        RectTransform tbRt2 = tutBodyObj.GetComponent<RectTransform>();
-        tbRt2.anchorMin = Vector2.zero;
-        tbRt2.anchorMax = Vector2.one;
-        tbRt2.offsetMin = new Vector2(14, 10);
-        tbRt2.offsetMax = new Vector2(-14, -38);
-
-        tutBannerBorder.SetActive(false);
-
         GameObject touchBar = new GameObject("TouchIndicatorBar", typeof(RectTransform));
         touchBar.transform.SetParent(hudPanel.transform, false);
         RectTransform tbRt = touchBar.GetComponent<RectTransform>();
@@ -477,7 +423,7 @@ public static class SceneSetup
             ctRt.offsetMax = Vector2.zero;
         }
 
-        GameObject startPanel = new GameObject("Tutorial_Start_Panel", typeof(Image));
+        GameObject startPanel = new GameObject("Start_Panel", typeof(Image));
         startPanel.transform.SetParent(canvasObj.transform, false);
         Image startPanelImg = startPanel.GetComponent<Image>();
         startPanelImg.color = new Color(0.035f, 0.018f, 0.075f, 0.88f);
@@ -593,48 +539,6 @@ public static class SceneSetup
         sbColors.highlightedColor = new Color(0.95f, 0.95f, 0.95f, 1f);
         sbColors.pressedColor = new Color(0.82f, 0.82f, 0.82f, 1f);
         startBtn.colors = sbColors;
-
-        GameObject tutBtnObj = new GameObject("TutorialButton", typeof(Image), typeof(Button));
-        tutBtnObj.transform.SetParent(startPanel.transform, false);
-        Image tutBtnImg = tutBtnObj.GetComponent<Image>();
-        tutBtnImg.color = new Color(0f, 0.96f, 1f, 0.9f);
-        Button tutBtn = tutBtnObj.GetComponent<Button>();
-        RectTransform tbRt3 = tutBtnObj.GetComponent<RectTransform>();
-        tbRt3.anchorMin = new Vector2(0.5f, 0.12f);
-        tbRt3.anchorMax = new Vector2(0.5f, 0.12f);
-        tbRt3.sizeDelta = new Vector2(300, 42);
-
-        GameObject tbInner = new GameObject("Inner", typeof(Image));
-        tbInner.transform.SetParent(tutBtnObj.transform, false);
-        Image tbiImg2 = tbInner.GetComponent<Image>();
-        tbiImg2.color = new Color(0.04f, 0.02f, 0.10f, 0.95f);
-        RectTransform tbiRt2 = tbInner.GetComponent<RectTransform>();
-        tbiRt2.anchorMin = Vector2.zero;
-        tbiRt2.anchorMax = Vector2.one;
-        tbiRt2.offsetMin = new Vector2(2f, 2f);
-        tbiRt2.offsetMax = new Vector2(-2f, -2f);
-
-        GameObject tbText = new GameObject("Text", typeof(TextMeshProUGUI));
-        tbText.transform.SetParent(tbInner.transform, false);
-        TextMeshProUGUI tbTxt = tbText.GetComponent<TextMeshProUGUI>();
-        if (libFont != null) tbTxt.font = libFont;
-        tbTxt.text = "COMO JOGAR (TUTORIAL)";
-        tbTxt.fontStyle = FontStyles.Bold;
-        tbTxt.fontSize = 13.5f;
-        tbTxt.alignment = TextAlignmentOptions.Center;
-        tbTxt.color = new Color(0f, 0.96f, 1f);
-        RectTransform tbtRt = tbText.GetComponent<RectTransform>();
-        tbtRt.anchorMin = Vector2.zero;
-        tbtRt.anchorMax = Vector2.one;
-        tbtRt.offsetMin = Vector2.zero;
-        tbtRt.offsetMax = Vector2.zero;
-
-        tutBtn.targetGraphic = tutBtnImg;
-        ColorBlock tutColors = tutBtn.colors;
-        tutColors.normalColor = Color.white;
-        tutColors.highlightedColor = new Color(1f, 0.9f, 0f, 1f);
-        tutColors.pressedColor = new Color(0.7f, 0.7f, 0.7f, 1f);
-        tutBtn.colors = tutColors;
 
         GameObject goPanel = new GameObject("GameOver_Panel", typeof(Image));
         goPanel.transform.SetParent(canvasObj.transform, false);
@@ -827,18 +731,14 @@ public static class SceneSetup
         mgrSo.FindProperty("comboText").objectReferenceValue = comboTmp;
         mgrSo.FindProperty("feedbackText").objectReferenceValue = feedbackTmp;
         mgrSo.FindProperty("attackTimingSlider").objectReferenceValue = slider;
-        mgrSo.FindProperty("tutorialInstructionPanel").objectReferenceValue = tutBannerBorder;
-        mgrSo.FindProperty("tutorialStepTitle").objectReferenceValue = tutTitleTmp;
-        mgrSo.FindProperty("tutorialStepBody").objectReferenceValue = tutBodyTmp;
         mgrSo.FindProperty("hudPanel").objectReferenceValue = hudPanel;
-        mgrSo.FindProperty("tutorialPanel").objectReferenceValue = startPanel;
+        mgrSo.FindProperty("startMenuPanel").objectReferenceValue = startPanel;
         mgrSo.FindProperty("gameOverPanel").objectReferenceValue = goPanel;
         mgrSo.FindProperty("gameOverTitleText").objectReferenceValue = goTitleTmp;
         mgrSo.FindProperty("gameOverTitleShadowText").objectReferenceValue = goTsTmp;
         mgrSo.FindProperty("gameOverSubtitleText").objectReferenceValue = goSubTmp;
         mgrSo.FindProperty("gameOverScoreText").objectReferenceValue = goScoreTmp;
         mgrSo.FindProperty("startButton").objectReferenceValue = startBtn;
-        mgrSo.FindProperty("tutorialButton").objectReferenceValue = tutBtn;
         mgrSo.FindProperty("restartButton").objectReferenceValue = restartBtn;
         mgrSo.ApplyModifiedProperties();
 

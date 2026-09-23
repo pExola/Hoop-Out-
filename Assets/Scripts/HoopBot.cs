@@ -23,7 +23,6 @@ public class HoopBot : MonoBehaviour
         if (!isBotActive) return;
         if (MatchManager.Instance == null) return;
         if (!MatchManager.Instance.IsPlaying) return;
-        if (MatchManager.Instance.IsTutorialActive) return;
 
         if (boss == null) boss = Object.FindFirstObjectByType<BossController>();
         if (player == null) player = GetComponent<PlayerController>();

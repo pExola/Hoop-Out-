@@ -157,7 +157,6 @@ public class BossController : MonoBehaviour
 
     private void TrySteal()
     {
-        if (MatchManager.Instance.IsTutorialActive) return;
         if (player.IsShooting) return;
         if (hasStolen) return;
 
