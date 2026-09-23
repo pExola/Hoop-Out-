@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "unity": {
+      "type": "local",
+      "command": ["C:\\Program Files\\nodejs\\npx.cmd", "-y", "anklebreaker-unity-mcp@latest"],
+      "enabled": true,
+      "environment": {
+        "UNITY_HUB_PATH": "C:\\Program Files\\Unity Hub\\Unity Hub.exe",
+        "UNITY_BRIDGE_PORT": "7890"
+      }
+    }
+  }
+}

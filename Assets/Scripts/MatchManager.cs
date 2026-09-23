@@ -37,16 +37,18 @@ public class MatchManager : MonoBehaviour
     [SerializeField] private Button tutorialButton;
     [SerializeField] private Button restartButton;
 
+    [Header("Drible livre")]
+    [SerializeField] private float openDistance = 1.15f;
+
     public bool IsPlaying { get; private set; }
     public bool IsTutorialActive { get; private set; }
+    public bool HasBall { get; private set; }
+    public float OpenDistance => openDistance;
     public int PlayerScore { get; private set; }
     public int BossScore { get; private set; }
     public int ComboStreak { get; private set; }
 
     private float timeRemaining;
-    private bool isBossStunned;
-    private bool tutorialAttackReceived;
-    private Coroutine attackMeterCoroutine;
     private Coroutine hitStopCoroutine;
     private Coroutine tutorialRoutine;
     private Coroutine feedbackCoroutine;
@@ -74,6 +76,7 @@ public class MatchManager : MonoBehaviour
         if (tutorialPanel != null) tutorialPanel.SetActive(true);
         if (hudPanel != null) hudPanel.SetActive(false);
 
+        HasBall = true;
         UpdateScoreUI();
         UpdateTimerUI(matchDuration);
         UpdateComboUI();
@@ -123,6 +126,8 @@ public class MatchManager : MonoBehaviour
         ComboStreak = 0;
         timeRemaining = matchDuration;
         IsPlaying = true;
+        HasBall = true;
+        ResetCourt();
 
         if (tutorialPanel != null) tutorialPanel.SetActive(false);
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
@@ -136,9 +141,7 @@ public class MatchManager : MonoBehaviour
 
         UpdateScoreUI();
         UpdateComboUI();
-        ShowFeedback("LET'S GO!", Color.green);
-
-        if (boss != null) boss.StartBossAI();
+        ShowFeedback("BORA!", Color.green);
     }
 
     private IEnumerator GuidedTutorialRoutine()
@@ -149,6 +152,7 @@ public class MatchManager : MonoBehaviour
         BossScore = 0;
         ComboStreak = 0;
         timeRemaining = matchDuration;
+        HasBall = true;
 
         if (tutorialPanel != null) tutorialPanel.SetActive(false);
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
@@ -158,93 +162,52 @@ public class MatchManager : MonoBehaviour
         UpdateScoreUI();
         UpdateTimerUI(matchDuration);
         UpdateComboUI();
+        ResetCourt();
 
-        if (boss != null) boss.StopBossAI();
-
-        ShowTutorialInstruction("STEP 1/3: THE FAKE", "The Brick will glow <color=#FFE600>YELLOW</color>!\n<color=#FF3366>DO NOT DODGE!</color> Hold your ground!");
-        yield return new WaitForSeconds(2.2f);
-
-        bool fakePassed = false;
-        while (!fakePassed)
+        ShowTutorialInstruction("PASSO 1/3: O DRIBLE", "Deslize para <color=#00F0FF>MOVIMENTAR</color> o jogador!\n← ou → (lado), ↑ (avança), ↓ (recua).\n[Teclado: WASD / Setas]");
+        float t = 0f;
+        int swipeBaseline = 0;
+        if (player != null) swipeBaseline = player.SwipeCount;
+        while (player == null || player.SwipeCount < swipeBaseline + 4)
         {
             if (!IsPlaying) yield break;
-            if (boss != null) boss.TriggerTutorialFake(1.8f);
-            yield return new WaitForSeconds(1.8f);
-
-            if (boss != null && boss.PlayerDodgedInWindow)
-            {
-                ShowTutorialInstruction("FELL FOR THE FAKE!", "<color=#FF3344>Hold your ground</color> when yellow!\nTry again...");
-                ShowFeedback("FELL FOR THE FAKE!", Color.red);
-                yield return new WaitForSeconds(1.8f);
-            }
-            else
-            {
-                fakePassed = true;
-                if (boss != null) boss.EndTutorialStun();
-                ShowFeedback("GREAT READ!", Color.cyan);
-                ShowTutorialInstruction("GREAT READ!", "<color=#00F0FF>Locked in!</color> You ignored the fake.");
-                yield return new WaitForSeconds(1.6f);
-            }
+            t += Time.deltaTime;
+            if (t > 20f) break;
+            yield return null;
         }
+        ShowFeedback("DRIBLE AFINADO!", Color.cyan);
 
-        ShowTutorialInstruction("STEP 2/3: THE ATTACK", "The Brick will glow <color=#FF3344>RED</color>!\n<color=#00F0FF>SWIPE QUICK</color> to dodge!\n(Swipe or [D])");
-        yield return new WaitForSeconds(2.2f);
-
-        bool dodgePassed = false;
-        while (!dodgePassed)
+        ShowTutorialInstruction("PASSO 2/3: FURE A DEFESA", "Avance pegando o aro e <color=#FFE600>DESVIE</color> do Tijolo.\nCrie espaço na área de arremesso!");
+        t = 0f;
+        while (!(player != null && player.InScoringArea && PlayerIsOpen()))
         {
             if (!IsPlaying) yield break;
-            if (boss != null) boss.TriggerTutorialAttack(DodgeDirection.Left, 2.5f);
-
-            float timer = 2.5f;
-            while (timer > 0f)
+            t += Time.deltaTime;
+            if (t > 12f)
             {
-                if (!IsPlaying) yield break;
-                timer -= Time.deltaTime;
-                if (boss != null && boss.PlayerDodgedInWindow && boss.LastPlayerDodge == DodgeDirection.Right)
-                {
-                    dodgePassed = true;
-                    break;
-                }
-                yield return null;
+                ShowTutorialInstruction("PASSO 2/3: FURE A DEFESA", "Mude de direção bruscamente para <color=#FFE600>FURAR</color> a marcação!\nChegue perto do aro com o Tijolo longe.");
+                t = 0f;
             }
+            yield return null;
+        }
+        ShowFeedback("FUROU A DEFESA!", Color.cyan);
 
-            if (dodgePassed)
+        ShowTutorialInstruction("PASSO 3/3: PONTUE", "Na área, mãos longe do Tijolo:\n<color=#00F0FF>[TOQUE]</color> Arremesso (+2 pts)\n<color=#FFE600>[SEGURE]</color> ENTERRADA (+3 pts)!");
+        t = 0f;
+        while (PlayerScore <= 0)
+        {
+            if (!IsPlaying) yield break;
+            t += Time.deltaTime;
+            if (t > 15f)
             {
-                if (boss != null) boss.TriggerTutorialStun(6f);
-                isBossStunned = true;
-                tutorialAttackReceived = false;
-                ShowFeedback("ANKLE BREAKER!", Color.green);
-                ShowTutorialInstruction("STEP 3/3: TAKE THE SHOT", "Boss is dazed! Score now:\n<color=#00F0FF>[TAP]</color> Jump Shot (+2 pts)\n<color=#FFE600>[HOLD]</color> SLAM DUNK (+3 pts)!");
-
-                if (attackTimingSlider != null)
-                {
-                    attackTimingSlider.gameObject.SetActive(true);
-                    if (attackMeterCoroutine != null) StopCoroutine(attackMeterCoroutine);
-                    attackMeterCoroutine = StartCoroutine(OscillateAttackMeter(6f));
-                }
-
-                float attackTimeout = 6f;
-                while (!tutorialAttackReceived && attackTimeout > 0f && isBossStunned)
-                {
-                    if (!IsPlaying) yield break;
-                    attackTimeout -= Time.deltaTime;
-                    yield return null;
-                }
-
-                if (attackTimingSlider != null) attackTimingSlider.gameObject.SetActive(false);
-                if (!tutorialAttackReceived && boss != null) boss.EndTutorialStun();
+                ShowTutorialInstruction("PASSO 3/3: PONTUE", "Crie espaço com o drible e segure no chute!\n<color=#FFE600>[SEGURE]</color> = enterrada, <color=#00F0FF>[TOQUE]</color> = arremesso.");
+                t = 0f;
             }
-            else
-            {
-                if (boss != null) boss.EndTutorialStun();
-                ShowTutorialInstruction("HIT TAKEN!", "Dodge away from the attack!\nTry again...");
-                yield return new WaitForSeconds(1.8f);
-            }
+            yield return null;
         }
 
-        ShowTutorialInstruction("TUTORIAL COMPLETE!", "<color=#FFE600>YOU'RE READY FOR THE ASPHALT!</color>\nShow 'em who runs the court!");
-        ShowFeedback("GAME ON!", Color.green);
+        ShowTutorialInstruction("TUTORIAL CONCLUÍDO!", "<color=#FFE600>PRONTO PARA O ASFALTO!</color>\nMostra quem manda na quadra!");
+        ShowFeedback("O JOGO COMEÇOU!", Color.green);
         yield return new WaitForSeconds(2.4f);
 
         PlayerPrefs.SetInt("HoopOut_TutorialCompleted", 1);
@@ -266,81 +229,122 @@ public class MatchManager : MonoBehaviour
         }
     }
 
-    public void OnPlayerDodge(DodgeDirection dir)
-    {
-        if (!IsPlaying) return;
-        if (boss != null) boss.RegisterPlayerDodge(dir);
-    }
-
-    public void OnBossStunned(float duration)
-    {
-        isBossStunned = true;
-        ShowFeedback("STUNNED! SCORE NOW!", Color.cyan);
-        DoHitStop(0.06f);
-        if (HoopCamera.Instance != null) HoopCamera.Instance.Shake(0.28f, 0.38f, 16);
-        if (VFXManager.Instance != null) VFXManager.Instance.TriggerSpeedLines(0.4f);
-
-        if (attackTimingSlider != null)
-        {
-            attackTimingSlider.gameObject.SetActive(true);
-            if (attackMeterCoroutine != null) StopCoroutine(attackMeterCoroutine);
-            attackMeterCoroutine = StartCoroutine(OscillateAttackMeter(duration));
-        }
-    }
-
-    public void OnBossRecovered()
-    {
-        isBossStunned = false;
-        if (attackTimingSlider != null) attackTimingSlider.gameObject.SetActive(false);
-        ShowFeedback("BOSS RECOVERED!", Color.gray);
-    }
-
-    private IEnumerator OscillateAttackMeter(float duration)
-    {
-        float elapsed = 0f;
-        while (elapsed < duration && isBossStunned)
-        {
-            elapsed += Time.deltaTime;
-            if (attackTimingSlider != null)
-            {
-                attackTimingSlider.value = Mathf.Clamp01(1f - (elapsed / duration));
-            }
-            yield return null;
-        }
-        if (attackTimingSlider != null) attackTimingSlider.gameObject.SetActive(false);
-    }
-
     public void OnPlayerAttack(AttackType type)
     {
-        if (!IsPlaying) return;
+        if (!IsPlaying || !HasBall) return;
 
-        if (!isBossStunned)
+        if (player == null) return;
+
+        if (!player.InScoringArea)
         {
-            ShowFeedback(IsTutorialActive ? "WAIT FOR THE STUN!" : "DODGE FIRST!", Color.yellow);
+            FailShot("FORA DA ÁREA!", "CHEGUE PERTO DO ARO PARA PONTUAR!");
             return;
         }
 
-        isBossStunned = false;
-        if (attackMeterCoroutine != null) StopCoroutine(attackMeterCoroutine);
-        if (attackTimingSlider != null) attackTimingSlider.gameObject.SetActive(false);
+        if (!PlayerIsOpen())
+        {
+            FailShot("BLOQUEADO!", "O TIJOLO CONTESTOU O CHUTE!");
+            return;
+        }
+
+        if (type == AttackType.HoldDunk && !player.InDunkZone)
+        {
+            FailShot("LONGE DO ARO!", "A ENTERRADA PRECISA SER DE PERTO!");
+            return;
+        }
+
+        ComboStreak++;
+        UpdateComboUI();
+        float comboPitch = 1f + Mathf.Min(ComboStreak * 0.1f, 0.5f);
+        if (IsTutorialActive) comboPitch = 1.15f;
+        ExecuteAttackHit(type, comboPitch);
+        if (IsPlaying) StartCoroutine(ResetAfterScoreRoutine());
+    }
+
+    private void FailShot(string feedbackMsg, string floatingMsg)
+    {
+        ShowFeedback(feedbackMsg, Color.red);
+        if (HoopAudio.Instance != null) HoopAudio.Instance.PlayCrowdOoh();
+        if (VFXManager.Instance != null)
+        {
+            VFXManager.Instance.ShowFloatingText(floatingMsg, Color.red, player.VisualPosition + new Vector3(0, 1.2f, 0), 1.2f);
+        }
 
         if (IsTutorialActive)
         {
-            tutorialAttackReceived = true;
-            ExecuteAttackHit(type, 1.15f);
+            StartCoroutine(TutorialFailRoutine());
+            return;
         }
-        else
+
+        HasBall = false;
+        if (boss != null) boss.OnStealPossession("BOLA PERDIDA!");
+        if (player != null) player.TriggerHit();
+        StartCoroutine(BossCounterRoutine("O TIJOLO PUNIU O ERRO! +2"));
+    }
+
+    private IEnumerator TutorialFailRoutine()
+    {
+        yield return new WaitForSeconds(0.5f);
+        if (!IsPlaying) yield break;
+        ResetCourt();
+    }
+
+    public void OnBossSteal()
+    {
+        if (!IsPlaying || !HasBall) return;
+        if (IsTutorialActive)
         {
-            ComboStreak++;
-            UpdateComboUI();
-            float comboPitch = 1f + Mathf.Min(ComboStreak * 0.1f, 0.5f);
-            ExecuteAttackHit(type, comboPitch);
+            ResetCourt();
+            return;
         }
+
+        HasBall = false;
+        if (boss != null) boss.OnStealPossession("ROUBOU A BOLA!");
+        if (player != null) player.TriggerHit();
+        StartCoroutine(BossCounterRoutine("O TIJOLO CONTRATACA E PONTUA! +2"));
+    }
+
+    private IEnumerator BossCounterRoutine(string reason)
+    {
+        yield return new WaitForSeconds(0.45f);
+        if (!IsPlaying) yield break;
+
+        Vector3 hoopPos = new Vector3(0f, 2.4f, 0f);
+        if (VFXManager.Instance != null)
+        {
+            VFXManager.Instance.SpawnShockwave(hoopPos, new Color(1f, 0.25f, 0.25f), 3f);
+            VFXManager.Instance.SpawnImpactSparks(hoopPos, Color.red, 30);
+        }
+        if (boss != null) boss.PlayCounterScore();
+
+        AddBossScore(2, reason);
+
+        yield return new WaitForSeconds(1.15f);
+        if (IsPlaying) ResetCourt();
+    }
+
+    private bool PlayerIsOpen()
+    {
+        if (player == null || boss == null) return true;
+        return Vector2.Distance(player.VisualPosition, boss.VisualPosition) >= openDistance;
+    }
+
+    public void ResetCourt()
+    {
+        HasBall = true;
+        if (player != null) player.ResetToStart();
+        if (boss != null) boss.ResetToStart();
+    }
+
+    private IEnumerator ResetAfterScoreRoutine()
+    {
+        yield return new WaitForSeconds(0.9f);
+        if (IsPlaying) ResetCourt();
     }
 
     private void ExecuteAttackHit(AttackType type, float comboPitch)
     {
-        Vector3 hoopPos = new Vector3(0f, 2.3f, 0f);
+        Vector3 hoopPos = new Vector3(0f, 2.4f, 0f);
 
         if (type == AttackType.HoldDunk)
         {
@@ -353,13 +357,13 @@ public class MatchManager : MonoBehaviour
                 VFXManager.Instance.TriggerSpeedLines(0.55f);
                 VFXManager.Instance.SpawnShockwave(hoopPos, new Color(1f, 0.4f, 0f), 3.4f);
                 VFXManager.Instance.SpawnImpactSparks(hoopPos, Color.yellow, 40);
-                VFXManager.Instance.ShowFloatingText("POSTERIZED!", new Color(1f, 0.85f, 0.1f), hoopPos + new Vector3(0, 0.5f, 0), 1.35f);
+                VFXManager.Instance.ShowFloatingText("POR CIMA DELE!", new Color(1f, 0.85f, 0.1f), hoopPos + new Vector3(0, 0.5f, 0), 1.35f);
             }
 
             if (player != null) player.TriggerSlamDunkAnimation();
             if (boss != null) boss.OnHitByPlayerAttack(AttackType.HoldDunk);
 
-            AddPlayerScore(3, "SLAM DUNK! +3");
+            AddPlayerScore(3, "ENTERRADA! +3");
         }
         else
         {
@@ -370,13 +374,13 @@ public class MatchManager : MonoBehaviour
             if (VFXManager.Instance != null)
             {
                 VFXManager.Instance.SpawnImpactSparks(hoopPos, Color.cyan, 25);
-                VFXManager.Instance.ShowFloatingText("FROM DOWNTOWN! +2", Color.cyan, hoopPos + new Vector3(0, 0.4f, 0), 1.25f);
+                VFXManager.Instance.ShowFloatingText("DE LONGE! +2", Color.cyan, hoopPos + new Vector3(0, 0.4f, 0), 1.25f);
             }
 
             if (player != null) player.TriggerJumpShotAnimation();
             if (boss != null) boss.OnHitByPlayerAttack(AttackType.TapShot);
 
-            AddPlayerScore(2, "SWISH! +2");
+            AddPlayerScore(2, "CESTA LIMPA! +2");
         }
     }
 
@@ -448,12 +452,12 @@ public class MatchManager : MonoBehaviour
         {
             if (bossScoreText != null)
             {
-                scoreText.text = $"PLAYER: {PlayerScore:D2}";
-                bossScoreText.text = $"BOSS: {BossScore:D2}";
+                scoreText.text = $"VOCÊ: {PlayerScore:D2}";
+                bossScoreText.text = $"TIJOLO: {BossScore:D2}";
             }
             else
             {
-                scoreText.text = $"YOU {PlayerScore:D2}  x  {BossScore:D2} THE BRICK";
+                scoreText.text = $"VOCÊ {PlayerScore:D2}  x  {BossScore:D2} O TIJOLO";
             }
         }
     }
@@ -521,7 +525,8 @@ public class MatchManager : MonoBehaviour
             feedbackText.text = "";
         }
 
-        if (boss != null) boss.StopBossAI();
+        if (player != null) player.ResetToStart();
+        if (boss != null) boss.ResetToStart();
         if (attackTimingSlider != null) attackTimingSlider.gameObject.SetActive(false);
 
         if (HoopAudio.Instance != null)
@@ -536,7 +541,7 @@ public class MatchManager : MonoBehaviour
 
         if (gameOverTitleText != null)
         {
-            string t = playerWon ? "VICTORY!" : "DEFEAT!";
+            string t = playerWon ? "VITÓRIA!" : "DERROTA!";
             gameOverTitleText.text = t;
             gameOverTitleText.color = playerWon ? new Color(1f, 0.88f, 0.15f) : new Color(1f, 0.28f, 0.38f);
             if (gameOverTitleShadowText != null)
@@ -548,13 +553,13 @@ public class MatchManager : MonoBehaviour
 
         if (gameOverSubtitleText != null)
         {
-            gameOverSubtitleText.text = playerWon ? "You owned the paint and ruled the court!" : "\"The Brick\" dominated the rim. Hit the gym!";
+            gameOverSubtitleText.text = playerWon ? "Você dominou o garrafão e mandou na quadra!" : "\"O Tijolo\" dominou o aro. Vai pra academia!";
             gameOverSubtitleText.color = playerWon ? new Color(0f, 0.94f, 1f) : new Color(0.85f, 0.85f, 0.9f);
         }
 
         if (gameOverScoreText != null)
         {
-            gameOverScoreText.text = $"YOU {PlayerScore:D2}  x  {BossScore:D2} THE BRICK\nMax Combo: x{ComboStreak}";
+            gameOverScoreText.text = $"VOCÊ {PlayerScore:D2}  x  {BossScore:D2} O TIJOLO\nMaior Combo: x{ComboStreak}";
         }
     }
 

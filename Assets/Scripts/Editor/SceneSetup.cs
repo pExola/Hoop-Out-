@@ -207,7 +207,7 @@ public static class SceneSetup
         TextMeshProUGUI pScoreTmp = pScoreObj.GetComponent<TextMeshProUGUI>();
         if (libFont != null) pScoreTmp.font = libFont;
         pScoreTmp.fontStyle = FontStyles.Bold;
-        pScoreTmp.text = "PLAYER: 00";
+        pScoreTmp.text = "VOCÊ: 00";
         pScoreTmp.fontSize = 18f;
         pScoreTmp.alignment = TextAlignmentOptions.MidlineLeft;
         pScoreTmp.color = new Color(0f, 0.96f, 1f);
@@ -237,7 +237,7 @@ public static class SceneSetup
         TextMeshProUGUI bScoreTmp = bScoreObj.GetComponent<TextMeshProUGUI>();
         if (libFont != null) bScoreTmp.font = libFont;
         bScoreTmp.fontStyle = FontStyles.Bold;
-        bScoreTmp.text = "BOSS: 00";
+        bScoreTmp.text = "TIJOLO: 00";
         bScoreTmp.fontSize = 18f;
         bScoreTmp.alignment = TextAlignmentOptions.MidlineRight;
         bScoreTmp.color = new Color(1f, 0.28f, 0.55f);
@@ -342,7 +342,7 @@ public static class SceneSetup
         TextMeshProUGUI sLabelTmp = sliderLabel.GetComponent<TextMeshProUGUI>();
         if (libFont != null) sLabelTmp.font = libFont;
         sLabelTmp.fontStyle = FontStyles.Bold;
-        sLabelTmp.text = "STUN WINDOW";
+        sLabelTmp.text = "JANELA DE STUN";
         sLabelTmp.fontSize = 10f;
         sLabelTmp.alignment = TextAlignmentOptions.Center;
         sLabelTmp.color = new Color(0.04f, 0.02f, 0.1f, 1f);
@@ -363,7 +363,7 @@ public static class SceneSetup
         RectTransform tbbRt = tutBannerBorder.GetComponent<RectTransform>();
         tbbRt.anchorMin = new Vector2(0.5f, 0.5f);
         tbbRt.anchorMax = new Vector2(0.5f, 0.5f);
-        tbbRt.anchoredPosition = new Vector2(0, 45);
+        tbbRt.anchoredPosition = new Vector2(0, -175);
         tbbRt.sizeDelta = new Vector2(390, 136);
 
         GameObject tutBannerInner = new GameObject("Tutorial_Banner_Inner", typeof(Image));
@@ -381,7 +381,7 @@ public static class SceneSetup
         TextMeshProUGUI tutTitleTmp = tutTitleObj.GetComponent<TextMeshProUGUI>();
         if (libFont != null) tutTitleTmp.font = libFont;
         tutTitleTmp.fontStyle = FontStyles.Bold;
-        tutTitleTmp.text = "STEP 1/3: THE FAKE";
+        tutTitleTmp.text = "PASSO 1/3: A FINTA";
         tutTitleTmp.fontSize = 18;
         tutTitleTmp.alignment = TextAlignmentOptions.Center;
         tutTitleTmp.color = new Color(1f, 0.92f, 0f);
@@ -397,7 +397,7 @@ public static class SceneSetup
         TextMeshProUGUI tutBodyTmp = tutBodyObj.GetComponent<TextMeshProUGUI>();
         if (libFont != null) tutBodyTmp.font = libFont;
         tutBodyTmp.fontStyle = FontStyles.Bold;
-        tutBodyTmp.text = "The Brick will glow yellow! Hold your ground!";
+        tutBodyTmp.text = "O Tijolo vai brilhar amarelo! Segure a posição!";
         tutBodyTmp.fontSize = 14.5f;
         tutBodyTmp.lineSpacing = 5;
         tutBodyTmp.alignment = TextAlignmentOptions.Center;
@@ -419,8 +419,8 @@ public static class SceneSetup
         tbRt.anchoredPosition = new Vector2(0, 14);
         tbRt.sizeDelta = new Vector2(406, 54);
 
-        string[] chipTitles = new string[] { "SWIPE LEFT", "TAP", "HOLD", "SWIPE RIGHT" };
-        string[] chipActions = new string[] { "DODGE", "JUMP SHOT", "SLAM DUNK", "DODGE" };
+        string[] chipTitles = new string[] { "ARRASTE ←", "TOQUE", "SEGURE", "ARRASTE →" };
+        string[] chipActions = new string[] { "DESVIAR", "ARREMESSO", "ENTERRADA", "DESVIAR" };
         Color[] chipTitleColors = new Color[]
         {
             new Color(0f, 0.96f, 1f),
@@ -512,7 +512,7 @@ public static class SceneSetup
         badgeText.transform.SetParent(badgeInner.transform, false);
         TextMeshProUGUI bTxt = badgeText.GetComponent<TextMeshProUGUI>();
         if (libFont != null) bTxt.font = libFont;
-        bTxt.text = "STREETBALL RHYTHMIC COMBAT";
+        bTxt.text = "BASQUETE DE RUA RÍTMICO";
         bTxt.fontStyle = FontStyles.Bold;
         bTxt.fontSize = 12.5f;
         bTxt.alignment = TextAlignmentOptions.Center;
@@ -562,7 +562,7 @@ public static class SceneSetup
         sSub.transform.SetParent(startPanel.transform, false);
         TextMeshProUGUI sSubTmp = sSub.GetComponent<TextMeshProUGUI>();
         if (libFont != null) sSubTmp.font = libFont;
-        sSubTmp.text = "RULE THE ASPHALT";
+        sSubTmp.text = "DOMINE O ASFALTO";
         sSubTmp.fontStyle = FontStyles.Bold;
         sSubTmp.fontSize = 18;
         sSubTmp.alignment = TextAlignmentOptions.Center;
@@ -618,7 +618,7 @@ public static class SceneSetup
         tbText.transform.SetParent(tbInner.transform, false);
         TextMeshProUGUI tbTxt = tbText.GetComponent<TextMeshProUGUI>();
         if (libFont != null) tbTxt.font = libFont;
-        tbTxt.text = "HOW TO PLAY (TUTORIAL)";
+        tbTxt.text = "COMO JOGAR (TUTORIAL)";
         tbTxt.fontStyle = FontStyles.Bold;
         tbTxt.fontSize = 13.5f;
         tbTxt.alignment = TextAlignmentOptions.Center;
@@ -650,7 +650,7 @@ public static class SceneSetup
         goTitleShadow.transform.SetParent(goPanel.transform, false);
         TextMeshProUGUI goTsTmp = goTitleShadow.GetComponent<TextMeshProUGUI>();
         if (bungeeFont != null) goTsTmp.font = bungeeFont;
-        goTsTmp.text = "VICTORY!";
+        goTsTmp.text = "VITÓRIA!";
         goTsTmp.fontSize = 48;
         goTsTmp.alignment = TextAlignmentOptions.Center;
         goTsTmp.color = new Color(0.03f, 0.01f, 0.07f, 1f);
@@ -664,7 +664,7 @@ public static class SceneSetup
         goTitle.transform.SetParent(goPanel.transform, false);
         TextMeshProUGUI goTitleTmp = goTitle.GetComponent<TextMeshProUGUI>();
         if (bungeeFont != null) goTitleTmp.font = bungeeFont;
-        goTitleTmp.text = "VICTORY!";
+        goTitleTmp.text = "VITÓRIA!";
         goTitleTmp.fontSize = 48;
         goTitleTmp.alignment = TextAlignmentOptions.Center;
         goTitleTmp.color = new Color(1f, 0.9f, 0f);
@@ -682,7 +682,7 @@ public static class SceneSetup
         goSub.transform.SetParent(goPanel.transform, false);
         TextMeshProUGUI goSubTmp = goSub.GetComponent<TextMeshProUGUI>();
         if (libFont != null) goSubTmp.font = libFont;
-        goSubTmp.text = "You broke the Boss's ankles!";
+        goSubTmp.text = "Você quebrou os tornozelos do Tijolo!";
         goSubTmp.fontStyle = FontStyles.Bold;
         goSubTmp.fontSize = 16;
         goSubTmp.alignment = TextAlignmentOptions.Center;
@@ -715,7 +715,7 @@ public static class SceneSetup
         goScoreHeader.transform.SetParent(goScoreCard.transform, false);
         TextMeshProUGUI gshTmp = goScoreHeader.GetComponent<TextMeshProUGUI>();
         if (libFont != null) gshTmp.font = libFont;
-        gshTmp.text = "FINAL SCORE";
+        gshTmp.text = "PLACAR FINAL";
         gshTmp.fontStyle = FontStyles.Bold;
         gshTmp.fontSize = 14;
         gshTmp.alignment = TextAlignmentOptions.Center;
@@ -731,7 +731,7 @@ public static class SceneSetup
         goScore.transform.SetParent(goScoreCard.transform, false);
         TextMeshProUGUI goScoreTmp = goScore.GetComponent<TextMeshProUGUI>();
         if (libFont != null) goScoreTmp.font = libFont;
-        goScoreTmp.text = "YOU 15  x  08 THE BRICK\nMax Combo: x3";
+        goScoreTmp.text = "VOCÊ 15  x  08 O TIJOLO\nMaior Combo: x3";
         goScoreTmp.fontStyle = FontStyles.Bold;
         goScoreTmp.fontSize = 19;
         goScoreTmp.lineSpacing = 8;

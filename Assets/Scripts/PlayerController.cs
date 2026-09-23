@@ -2,22 +2,23 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using DG.Tweening;
 
-public enum DodgeDirection
-{
-    None,
-    Left,
-    Right
-}
-
 public enum AttackType
 {
     TapShot,
     HoldDunk
 }
 
+public enum PlayerMoveDir
+{
+    None,
+    Left,
+    Right,
+    Up,
+    Down
+}
+
 public class PlayerController : MonoBehaviour
 {
-    [SerializeField] private float dodgeDuration = 0.2f;
     [SerializeField] private SpriteRenderer spriteRenderer;
     [SerializeField] private Sprite normalSprite;
     [SerializeField] private Sprite dodgeLeftSprite;
@@ -26,87 +27,96 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private HitFlash hitFlash;
     [SerializeField] private GameObject chargeAura;
 
-    [SerializeField] private float swipeThresholdPixels = 35f;
-    [SerializeField] private float holdDurationThreshold = 0.26f;
+    [Header("Drible (movimento)")]
+    [SerializeField] private float swipeThresholdPixels = 30f;
+    [SerializeField] private float lateralSpeed = 5.5f;
+    [SerializeField] private float advanceSpeed = 4.4f;
+    [SerializeField] private float retreatSpeed = 3.2f;
+    [SerializeField] private float momentumDamping = 5f;
+    [SerializeField] private float dribbleBounceRate = 20f;
 
-    private Vector3 initialPosition;
+    [Header("Arremesso")]
+    [SerializeField] private float holdDurationThreshold = 0.26f;
+    [SerializeField] private float shootLineY = 3.7f;
+    [SerializeField] private float dunkLineY = 4.55f;
+
+    [Header("Limites da quadra")]
+    [SerializeField] private float minX = -1.9f;
+    [SerializeField] private float maxX = 1.9f;
+    [SerializeField] private float minY = 0f;
+    [SerializeField] private float maxY = 4.9f;
+
+    [Header("Posição visual do personagem no sprite")]
+    [SerializeField] private Vector3 visualOffset = new Vector3(0f, -2.81f, 0f);
+
+    public Vector3 Position => transform.position;
+    public Vector3 VisualPosition => transform.position + visualOffset;
+    public bool InScoringArea => transform.position.y >= shootLineY;
+    public bool InDunkZone => transform.position.y >= dunkLineY;
+    public bool IsShooting => isShooting;
+    public int SwipeCount { get; private set; }
+    public float Speed => velocity.magnitude;
+    public Vector2 Velocity => velocity;
+
+    private Vector2 velocity;
+    private Vector3 startPosition;
     private Vector3 initialScale;
-    private bool isBusy;
-    private Vector2 pointerStartPos;
-    private float pointerStartTime;
+    private bool isShooting;
     private bool isPointerDown;
     private bool swipeHandled;
+    private Vector2 pointerStartPos;
+    private float pointerStartTime;
+    private float lastDribbleT;
+    private float lastMoveSign;
 
     private void Awake()
     {
-        initialPosition = transform.localPosition;
+        startPosition = transform.position;
         initialScale = transform.localScale;
         if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
         if (hitFlash == null) hitFlash = GetComponent<HitFlash>();
         if (hitFlash == null) hitFlash = gameObject.AddComponent<HitFlash>();
-
-        if (chargeAura == null)
-        {
-            chargeAura = new GameObject("ChargeAura");
-            chargeAura.transform.SetParent(transform, false);
-            chargeAura.transform.localPosition = new Vector3(0, -3.25f, 0);
-            LineRenderer lr = chargeAura.AddComponent<LineRenderer>();
-            lr.useWorldSpace = false;
-            lr.loop = true;
-            lr.positionCount = 32;
-            lr.startWidth = 0.12f;
-            lr.endWidth = 0.12f;
-            lr.material = new Material(Shader.Find("Sprites/Default"));
-            lr.startColor = new Color(1f, 0.9f, 0f, 0.95f);
-            lr.endColor = new Color(0f, 0.95f, 1f, 0.95f);
-            lr.sortingOrder = 6;
-            for (int i = 0; i < 32; i++)
-            {
-                float rad = (i / 32f) * Mathf.PI * 2f;
-                lr.SetPosition(i, new Vector3(Mathf.Cos(rad) * 1.3f, Mathf.Sin(rad) * 0.65f, 0));
-            }
-            chargeAura.SetActive(false);
-        }
+        SetupChargeAura();
     }
 
-    private void OnEnable()
+    private void SetupChargeAura()
     {
-        isBusy = false;
-        isPointerDown = false;
-        swipeHandled = false;
+        if (chargeAura != null) return;
+        chargeAura = new GameObject("ChargeAura");
+        chargeAura.transform.SetParent(transform, false);
+        chargeAura.transform.localPosition = new Vector3(0, -3.25f, 0);
+        LineRenderer lr = chargeAura.AddComponent<LineRenderer>();
+        lr.useWorldSpace = false;
+        lr.loop = true;
+        lr.positionCount = 32;
+        lr.startWidth = 0.12f;
+        lr.endWidth = 0.12f;
+        lr.material = new Material(Shader.Find("Sprites/Default"));
+        lr.startColor = new Color(1f, 0.9f, 0f, 0.95f);
+        lr.endColor = new Color(0f, 0.95f, 1f, 0.95f);
+        lr.sortingOrder = 6;
+        for (int i = 0; i < 32; i++)
+        {
+            float rad = (i / 32f) * Mathf.PI * 2f;
+            lr.SetPosition(i, new Vector3(Mathf.Cos(rad) * 1.3f, Mathf.Sin(rad) * 0.65f, 0));
+        }
+        chargeAura.SetActive(false);
     }
 
     private void Update()
     {
-        if (MatchManager.Instance == null || !MatchManager.Instance.IsPlaying)
+        if (MatchManager.Instance == null) return;
+        if (!MatchManager.Instance.IsPlaying)
         {
-            if (chargeAura != null && chargeAura.activeSelf) chargeAura.SetActive(false);
+            HideCharge();
             return;
         }
-
-        if (isBusy)
-        {
-            if (chargeAura != null && chargeAura.activeSelf) chargeAura.SetActive(false);
-            return;
-        }
+        if (isShooting) return;
 
         HandleKeyboard();
         HandlePointer();
-
-        bool isCharging = (Keyboard.current != null && Keyboard.current.spaceKey.isPressed) || (isPointerDown && !swipeHandled);
-        if (chargeAura != null)
-        {
-            if (isCharging && (Time.time - pointerStartTime) > 0.1f)
-            {
-                chargeAura.SetActive(true);
-                float pulse = 1f + Mathf.Sin(Time.time * 26f) * 0.12f;
-                chargeAura.transform.localScale = new Vector3(pulse, pulse, 1f);
-            }
-            else if (chargeAura.activeSelf)
-            {
-                chargeAura.SetActive(false);
-            }
-        }
+        IntegrateMovement();
+        DribbleFeedback();
     }
 
     private void HandleKeyboard()
@@ -114,39 +124,21 @@ public class PlayerController : MonoBehaviour
         var kb = Keyboard.current;
         if (kb == null) return;
 
-        if (kb.aKey.wasPressedThisFrame || kb.leftArrowKey.wasPressedThisFrame)
-        {
-            PerformDodge(DodgeDirection.Left);
-        }
-        else if (kb.dKey.wasPressedThisFrame || kb.rightArrowKey.wasPressedThisFrame)
-        {
-            PerformDodge(DodgeDirection.Right);
-        }
+        if (kb.aKey.isPressed || kb.leftArrowKey.isPressed) ApplyMove(PlayerMoveDir.Left);
+        else if (kb.dKey.isPressed || kb.rightArrowKey.isPressed) ApplyMove(PlayerMoveDir.Right);
+
+        if (kb.wKey.isPressed || kb.upArrowKey.isPressed) ApplyMove(PlayerMoveDir.Up);
+        else if (kb.sKey.isPressed || kb.downArrowKey.isPressed) ApplyMove(PlayerMoveDir.Down);
 
         if (kb.spaceKey.wasPressedThisFrame)
         {
             pointerStartTime = Time.time;
-            if (chargingSprite != null && spriteRenderer != null)
-            {
-                spriteRenderer.sprite = chargingSprite;
-            }
+            ShowCharge();
         }
         if (kb.spaceKey.wasReleasedThisFrame)
         {
-            if (spriteRenderer != null && normalSprite != null)
-            {
-                spriteRenderer.sprite = normalSprite;
-            }
-
-            float pressDuration = Time.time - pointerStartTime;
-            if (pressDuration >= holdDurationThreshold)
-            {
-                TriggerAttack(AttackType.HoldDunk);
-            }
-            else
-            {
-                TriggerAttack(AttackType.TapShot);
-            }
+            float duration = Time.time - pointerStartTime;
+            ReleasePress(duration);
         }
     }
 
@@ -161,154 +153,190 @@ public class PlayerController : MonoBehaviour
             pointerStartTime = Time.time;
             isPointerDown = true;
             swipeHandled = false;
-            if (chargingSprite != null && spriteRenderer != null)
-            {
-                spriteRenderer.sprite = chargingSprite;
-            }
+            ShowCharge();
         }
         else if (pointer.press.isPressed && isPointerDown && !swipeHandled)
         {
             Vector2 currentPos = pointer.position.ReadValue();
             Vector2 delta = currentPos - pointerStartPos;
-
-            if (Mathf.Abs(delta.x) > swipeThresholdPixels && Mathf.Abs(delta.x) > Mathf.Abs(delta.y))
+            if (delta.magnitude > swipeThresholdPixels)
             {
                 swipeHandled = true;
-                if (spriteRenderer != null && normalSprite != null)
-                {
-                    spriteRenderer.sprite = normalSprite;
-                }
-                PerformDodge(delta.x < 0 ? DodgeDirection.Left : DodgeDirection.Right);
+                ApplyMove(Mathf.Abs(delta.y) > Mathf.Abs(delta.x)
+                    ? (delta.y > 0 ? PlayerMoveDir.Up : PlayerMoveDir.Down)
+                    : (delta.x > 0 ? PlayerMoveDir.Right : PlayerMoveDir.Left));
             }
         }
         else if (pointer.press.wasReleasedThisFrame && isPointerDown)
         {
-            isPointerDown = false;
-            if (spriteRenderer != null && normalSprite != null)
+            float duration = Time.time - pointerStartTime;
+            ReleasePress(duration);
+        }
+    }
+
+    private void ReleasePress(float duration)
+    {
+        isPointerDown = false;
+        HideCharge();
+        if (spriteRenderer != null && normalSprite != null && !isShooting) spriteRenderer.sprite = normalSprite;
+        if (swipeHandled) return;
+        AttackType type = duration >= holdDurationThreshold ? AttackType.HoldDunk : AttackType.TapShot;
+        TryShoot(type);
+    }
+
+    private void ApplyMove(PlayerMoveDir dir)
+    {
+        switch (dir)
+        {
+            case PlayerMoveDir.Left:
+                velocity.x = -lateralSpeed;
+                lastMoveSign = -1f;
+                SwipeCount++;
+                break;
+            case PlayerMoveDir.Right:
+                velocity.x = lateralSpeed;
+                lastMoveSign = 1f;
+                SwipeCount++;
+                break;
+            case PlayerMoveDir.Up:
+                velocity.y = advanceSpeed;
+                SwipeCount++;
+                break;
+            case PlayerMoveDir.Down:
+                velocity.y = -retreatSpeed;
+                SwipeCount++;
+                break;
+        }
+
+        if (spriteRenderer != null && !isShooting)
+        {
+            if (lastMoveSign < 0f && dodgeLeftSprite != null) spriteRenderer.sprite = dodgeLeftSprite;
+            else if (lastMoveSign > 0f && dodgeRightSprite != null) spriteRenderer.sprite = dodgeRightSprite;
+            else if (normalSprite != null) spriteRenderer.sprite = normalSprite;
+        }
+    }
+
+    private void IntegrateMovement()
+    {
+        float dt = Time.deltaTime;
+        transform.position += (Vector3)(velocity * dt);
+
+        if (Mathf.Abs(velocity.x) > 0.01f)
+            velocity.x = Mathf.MoveTowards(velocity.x, 0f, momentumDamping * dt);
+        if (Mathf.Abs(velocity.y) > 0.01f)
+            velocity.y = Mathf.MoveTowards(velocity.y, 0f, momentumDamping * dt);
+
+        Vector3 p = transform.position;
+        p.x = Mathf.Clamp(p.x, minX, maxX);
+        p.y = Mathf.Clamp(p.y, minY, maxY);
+        transform.position = p;
+    }
+
+    private void DribbleFeedback()
+    {
+        float speed = velocity.magnitude;
+        if (speed > 0.15f)
+        {
+            float b = Mathf.Abs(Mathf.Sin(Time.time * dribbleBounceRate)) * 0.07f;
+            transform.localScale = new Vector3(initialScale.x * (1f - b), initialScale.y * (1f + b), initialScale.z);
+
+            if (Time.time - lastDribbleT > 0.3f)
             {
-                spriteRenderer.sprite = normalSprite;
-            }
-
-            if (!swipeHandled)
-            {
-                float duration = Time.time - pointerStartTime;
-                if (duration >= holdDurationThreshold)
-                {
-                    TriggerAttack(AttackType.HoldDunk);
-                }
-                else
-                {
-                    TriggerAttack(AttackType.TapShot);
-                }
+                lastDribbleT = Time.time;
+                if (HoopAudio.Instance != null) HoopAudio.Instance.PlayDribble();
             }
         }
-    }
-
-    public void PerformDodge(DodgeDirection direction)
-    {
-        if (isBusy) return;
-        StopAllCoroutines();
-        StartCoroutine(DodgeRoutine(direction));
-    }
-
-    private System.Collections.IEnumerator DodgeRoutine(DodgeDirection direction)
-    {
-        isBusy = true;
-
-        if (spriteRenderer != null)
+        else if (!isShooting)
         {
-            if (direction == DodgeDirection.Left && dodgeLeftSprite != null)
-                spriteRenderer.sprite = dodgeLeftSprite;
-            else if (direction == DodgeDirection.Right && dodgeRightSprite != null)
-                spriteRenderer.sprite = dodgeRightSprite;
-        }
-
-        if (HoopAudio.Instance != null)
-        {
-            HoopAudio.Instance.PlaySqueak();
-            HoopAudio.Instance.PlayDodge();
-        }
-
-        if (VFXManager.Instance != null)
-        {
-            VFXManager.Instance.SpawnDust(transform.position + new Vector3(0, -2.5f, 0), 5);
-        }
-
-        MatchManager.Instance.OnPlayerDodge(direction);
-
-        transform.DOKill();
-        transform.localScale = initialScale;
-
-        transform.DOScale(new Vector3(initialScale.x * 1.1f, initialScale.y * 0.9f, initialScale.z), dodgeDuration * 0.5f)
-            .SetLoops(2, LoopType.Yoyo);
-
-        yield return new WaitForSeconds(dodgeDuration);
-
-        isBusy = false;
-        transform.localScale = initialScale;
-        transform.localPosition = initialPosition;
-        if (spriteRenderer != null && normalSprite != null)
-        {
-            spriteRenderer.sprite = normalSprite;
+            transform.localScale = initialScale;
         }
     }
 
-    private void TriggerAttack(AttackType type)
+    public void BotSetVelocity(Vector2 dir)
     {
+        if (isShooting) return;
+        velocity.x = dir.x * lateralSpeed;
+        velocity.y = dir.y * advanceSpeed;
+        if (dir.y > 0f) SwipeCount++;
+        if (Mathf.Abs(dir.x) > 0.01f) lastMoveSign = Mathf.Sign(dir.x);
+    }
+
+    public void BotShoot(AttackType type)
+    {
+        TryShoot(type);
+    }
+
+    public void TryShoot(AttackType type)
+    {
+        if (MatchManager.Instance == null) return;
+        if (!MatchManager.Instance.IsPlaying || isShooting) return;
+        if (!MatchManager.Instance.HasBall) return;
         MatchManager.Instance.OnPlayerAttack(type);
+    }
+
+    private void ShowCharge()
+    {
+        if (chargeAura == null) return;
+        chargeAura.SetActive(true);
+        if (spriteRenderer != null && chargingSprite != null) spriteRenderer.sprite = chargingSprite;
+    }
+
+    private void HideCharge()
+    {
+        if (chargeAura != null) chargeAura.SetActive(false);
     }
 
     public void TriggerJumpShotAnimation()
     {
-        StopAllCoroutines();
         StartCoroutine(JumpShotRoutine());
     }
 
     private System.Collections.IEnumerator JumpShotRoutine()
     {
-        isBusy = true;
+        isShooting = true;
         transform.DOKill();
         transform.localScale = initialScale;
+        Vector3 basePos = transform.position;
 
         Sequence seq = DOTween.Sequence();
         seq.Append(transform.DOScale(new Vector3(initialScale.x * 0.9f, initialScale.y * 1.15f, initialScale.z), 0.12f));
-        seq.Append(transform.DOLocalMoveY(initialPosition.y + 0.85f, 0.22f).SetEase(Ease.OutQuad));
-        seq.Append(transform.DOLocalMoveY(initialPosition.y, 0.18f).SetEase(Ease.InQuad));
+        seq.Append(transform.DOMoveY(basePos.y + 0.6f, 0.2f).SetEase(Ease.OutQuad));
+        seq.Append(transform.DOMoveY(basePos.y, 0.18f).SetEase(Ease.InQuad));
         seq.Append(transform.DOScale(new Vector3(initialScale.x * 1.1f, initialScale.y * 0.9f, initialScale.z), 0.08f));
         seq.Append(transform.DOScale(initialScale, 0.08f));
 
-        yield return new WaitForSeconds(0.68f);
+        yield return new WaitForSeconds(0.66f);
 
         transform.localScale = initialScale;
-        transform.localPosition = initialPosition;
-        isBusy = false;
+        isShooting = false;
     }
 
     public void TriggerSlamDunkAnimation()
     {
-        StopAllCoroutines();
         StartCoroutine(SlamDunkRoutine());
     }
 
     private System.Collections.IEnumerator SlamDunkRoutine()
     {
-        isBusy = true;
+        isShooting = true;
         transform.DOKill();
         transform.localScale = initialScale;
+        Vector3 basePos = transform.position;
+
+        float hopY = Mathf.Min(basePos.y + 1.3f, maxY);
 
         Sequence seq = DOTween.Sequence();
         seq.Append(transform.DOScale(new Vector3(initialScale.x * 1.15f, initialScale.y * 0.85f, initialScale.z), 0.1f));
         seq.Append(transform.DOScale(new Vector3(initialScale.x * 0.85f, initialScale.y * 1.25f, initialScale.z), 0.15f));
-        seq.Join(transform.DOLocalMove(new Vector3(0, 1.6f, 0), 0.28f).SetEase(Ease.OutCubic));
-        seq.Append(transform.DOLocalMove(initialPosition, 0.2f).SetEase(Ease.InExpo));
+        seq.Join(transform.DOMoveY(hopY, 0.28f).SetEase(Ease.OutCubic));
+        seq.Append(transform.DOMoveY(basePos.y, 0.2f).SetEase(Ease.InExpo));
         seq.Append(transform.DOScale(new Vector3(initialScale.x * 1.25f, initialScale.y * 0.8f, initialScale.z), 0.1f));
         seq.Append(transform.DOScale(initialScale, 0.1f));
 
         yield return new WaitForSeconds(0.85f);
 
         transform.localScale = initialScale;
-        transform.localPosition = initialPosition;
-        isBusy = false;
+        isShooting = false;
         if (VFXManager.Instance != null)
         {
             VFXManager.Instance.SpawnDust(transform.position + new Vector3(0, -2.5f, 0), 8);
@@ -318,19 +346,28 @@ public class PlayerController : MonoBehaviour
     public void TriggerHit()
     {
         if (hitFlash != null) hitFlash.Flash(0.08f);
-        StopAllCoroutines();
         StartCoroutine(HitRoutine());
     }
 
     private System.Collections.IEnumerator HitRoutine()
     {
         transform.DOKill();
+        transform.DOShakePosition(0.22f, new Vector3(0.2f, 0.2f, 0), 14);
+        yield return new WaitForSeconds(0.24f);
         transform.localScale = initialScale;
-        transform.DOShakePosition(0.25f, new Vector3(0.2f, 0.2f, 0), 15);
+    }
 
-        yield return new WaitForSeconds(0.26f);
-
-        transform.localPosition = initialPosition;
+    public void ResetToStart()
+    {
+        StopAllCoroutines();
+        isShooting = false;
+        isPointerDown = false;
+        swipeHandled = false;
+        velocity = Vector2.zero;
+        transform.DOKill();
+        transform.position = startPosition;
         transform.localScale = initialScale;
+        HideCharge();
+        if (spriteRenderer != null && normalSprite != null) spriteRenderer.sprite = normalSprite;
     }
 }
