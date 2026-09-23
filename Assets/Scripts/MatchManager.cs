@@ -37,6 +37,8 @@ public class MatchManager : MonoBehaviour
 
     public bool IsPlaying { get; private set; }
     public bool HasBall { get; private set; }
+    public bool BossPossession { get; private set; }
+    public bool IsBossStunned { get; private set; }
     public float OpenDistance => openDistance;
     public int PlayerScore { get; private set; }
     public int BossScore { get; private set; }
@@ -45,6 +47,7 @@ public class MatchManager : MonoBehaviour
     private float timeRemaining;
     private Coroutine hitStopCoroutine;
     private Coroutine feedbackCoroutine;
+    private Coroutine attackMeterCoroutine;
 
     private void Awake()
     {
@@ -99,6 +102,9 @@ public class MatchManager : MonoBehaviour
         timeRemaining = matchDuration;
         IsPlaying = true;
         HasBall = true;
+        BossPossession = false;
+        IsBossStunned = false;
+        HideAttackMeter();
         ResetCourt();
 
         if (startMenuPanel != null) startMenuPanel.SetActive(false);
@@ -116,9 +122,114 @@ public class MatchManager : MonoBehaviour
         ShowFeedback("BORA!", Color.green);
     }
 
+    public void OnPlayerDodge(DodgeDirection dir)
+    {
+        if (!IsPlaying) return;
+        if (boss != null) boss.RegisterPlayerDodge(dir);
+    }
+
+    private void BeginBossPossession(string possessionMsg)
+    {
+        if (!IsPlaying) return;
+        HasBall = false;
+        BossPossession = true;
+        IsBossStunned = false;
+        HideAttackMeter();
+        if (player != null) player.EnterGuardMode();
+        ShowFeedback(possessionMsg, Color.yellow);
+        if (boss != null) boss.StartBossAttack();
+    }
+
+    private IEnumerator TransitionToBossPossession(float delay, string msg)
+    {
+        yield return new WaitForSeconds(delay);
+        if (!IsPlaying) yield break;
+        BeginBossPossession(msg);
+    }
+
+    public void EndBossPossession()
+    {
+        if (!IsPlaying) return;
+        BossPossession = false;
+        IsBossStunned = false;
+        HideAttackMeter();
+        if (player != null) player.ExitGuardMode();
+        ResetCourt();
+        if (boss != null) boss.StopBossAttack();
+    }
+
+    public void BeginBossStun(float duration)
+    {
+        if (!IsPlaying) return;
+        IsBossStunned = true;
+        ShowFeedback("STUNNED! PONTUE AGORA!", Color.cyan);
+        DoHitStop(0.06f);
+        if (HoopCamera.Instance != null) HoopCamera.Instance.Shake(0.28f, 0.38f, 16);
+        if (VFXManager.Instance != null) VFXManager.Instance.TriggerSpeedLines(0.4f);
+
+        if (attackTimingSlider != null)
+        {
+            attackTimingSlider.gameObject.SetActive(true);
+            if (attackMeterCoroutine != null) StopCoroutine(attackMeterCoroutine);
+            attackMeterCoroutine = StartCoroutine(OscillateAttackMeter(duration));
+        }
+    }
+
+    public void BossRecovered()
+    {
+        IsBossStunned = false;
+        HideAttackMeter();
+        ShowFeedback("O TIJOLO SE RECUPEROU!", Color.gray);
+    }
+
+    private IEnumerator OscillateAttackMeter(float duration)
+    {
+        float elapsed = 0f;
+        while (elapsed < duration && IsBossStunned)
+        {
+            elapsed += Time.deltaTime;
+            if (attackTimingSlider != null)
+            {
+                attackTimingSlider.value = Mathf.Clamp01(1f - (elapsed / duration));
+            }
+            yield return null;
+        }
+        HideAttackMeter();
+    }
+
+    private void HideAttackMeter()
+    {
+        if (attackMeterCoroutine != null)
+        {
+            StopCoroutine(attackMeterCoroutine);
+            attackMeterCoroutine = null;
+        }
+        if (attackTimingSlider != null) attackTimingSlider.gameObject.SetActive(false);
+    }
+
     public void OnPlayerAttack(AttackType type)
     {
-        if (!IsPlaying || !HasBall) return;
+        if (!IsPlaying) return;
+
+        if (BossPossession)
+        {
+            if (!IsBossStunned)
+            {
+                ShowFeedback("DESVIE PARA STUNAR O TIJOLO!", Color.yellow);
+                return;
+            }
+            IsBossStunned = false;
+            HideAttackMeter();
+
+            ComboStreak++;
+            UpdateComboUI();
+            float comboPitch = 1f + Mathf.Min(ComboStreak * 0.1f, 0.5f);
+            ExecuteAttackHit(type, comboPitch);
+            if (IsPlaying) StartCoroutine(ReturnToPlayerPossessionRoutine());
+            return;
+        }
+
+        if (!HasBall) return;
 
         if (player == null) return;
 
@@ -142,9 +253,15 @@ public class MatchManager : MonoBehaviour
 
         ComboStreak++;
         UpdateComboUI();
-        float comboPitch = 1f + Mathf.Min(ComboStreak * 0.1f, 0.5f);
-        ExecuteAttackHit(type, comboPitch);
+        float comboPitch2 = 1f + Mathf.Min(ComboStreak * 0.1f, 0.5f);
+        ExecuteAttackHit(type, comboPitch2);
         if (IsPlaying) StartCoroutine(ResetAfterScoreRoutine());
+    }
+
+    private IEnumerator ReturnToPlayerPossessionRoutine()
+    {
+        yield return new WaitForSeconds(0.9f);
+        EndBossPossession();
     }
 
     private void FailShot(string feedbackMsg, string floatingMsg)
@@ -159,7 +276,7 @@ public class MatchManager : MonoBehaviour
         HasBall = false;
         if (boss != null) boss.OnStealPossession("BOLA PERDIDA!");
         if (player != null) player.TriggerHit();
-        StartCoroutine(BossCounterRoutine("O TIJOLO PUNIU O ERRO! +2"));
+        StartCoroutine(TransitionToBossPossession(0.35f, "O TIJOLO TEM A BOLA!"));
     }
 
     public void OnBossSteal()
@@ -169,26 +286,7 @@ public class MatchManager : MonoBehaviour
         HasBall = false;
         if (boss != null) boss.OnStealPossession("ROUBOU A BOLA!");
         if (player != null) player.TriggerHit();
-        StartCoroutine(BossCounterRoutine("O TIJOLO CONTRATACA E PONTUA! +2"));
-    }
-
-    private IEnumerator BossCounterRoutine(string reason)
-    {
-        yield return new WaitForSeconds(0.45f);
-        if (!IsPlaying) yield break;
-
-        Vector3 hoopPos = new Vector3(0f, 2.4f, 0f);
-        if (VFXManager.Instance != null)
-        {
-            VFXManager.Instance.SpawnShockwave(hoopPos, new Color(1f, 0.25f, 0.25f), 3f);
-            VFXManager.Instance.SpawnImpactSparks(hoopPos, Color.red, 30);
-        }
-        if (boss != null) boss.PlayCounterScore();
-
-        AddBossScore(2, reason);
-
-        yield return new WaitForSeconds(1.15f);
-        if (IsPlaying) ResetCourt();
+        StartCoroutine(TransitionToBossPossession(0.35f, "O TIJOLO TEM A BOLA!"));
     }
 
     private bool PlayerIsOpen()
@@ -384,7 +482,10 @@ public class MatchManager : MonoBehaviour
     private void EndMatch(bool playerWon)
     {
         IsPlaying = false;
+        BossPossession = false;
+        IsBossStunned = false;
         Time.timeScale = 1f;
+        HideAttackMeter();
 
         if (feedbackCoroutine != null) StopCoroutine(feedbackCoroutine);
         if (feedbackText != null)

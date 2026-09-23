@@ -9,6 +9,8 @@ public class HoopBot : MonoBehaviour
     private bool isBotActive;
     private float nextDecisionTime;
     private float shootCooldown;
+    private bool hasReactedToState;
+    private BossState lastHandledState = BossState.Idle;
 
     private void Awake()
     {
@@ -29,6 +31,13 @@ public class HoopBot : MonoBehaviour
         if (boss == null || player == null) return;
 
         if (player.IsShooting) return;
+
+        if (MatchManager.Instance.BossPossession)
+        {
+            HandleGuardMode();
+            return;
+        }
+
         if (!MatchManager.Instance.HasBall) return;
 
         Vector2 move = ComputeMove();
@@ -41,6 +50,55 @@ public class HoopBot : MonoBehaviour
                 ? AttackType.HoldDunk
                 : AttackType.TapShot;
             player.BotShoot(type);
+        }
+    }
+
+    private void HandleGuardMode()
+    {
+        BossState st = boss.CurrentState;
+        if (st != lastHandledState)
+        {
+            lastHandledState = st;
+            hasReactedToState = false;
+        }
+
+        switch (st)
+        {
+            case BossState.WindupAttack:
+                if (hasReactedToState) break;
+                hasReactedToState = true;
+                if (Random.value < 0.3f)
+                {
+                    DodgeDirection wrongDir = boss.RequiredDodge == DodgeDirection.Left
+                        ? DodgeDirection.Right
+                        : DodgeDirection.Left;
+                    player.PerformDodge(wrongDir);
+                }
+                else
+                {
+                    player.PerformDodge(boss.RequiredDodge);
+                }
+                break;
+
+            case BossState.WindupFake:
+                if (hasReactedToState) break;
+                hasReactedToState = true;
+                if (Random.value < 0.35f)
+                {
+                    player.PerformDodge(Random.value < 0.5f ? DodgeDirection.Left : DodgeDirection.Right);
+                }
+                break;
+
+            case BossState.Stunned:
+                if (hasReactedToState) break;
+                hasReactedToState = true;
+                AttackType attack = Random.value < 0.55f ? AttackType.HoldDunk : AttackType.TapShot;
+                player.BotShoot(attack);
+                break;
+
+            default:
+                hasReactedToState = false;
+                break;
         }
     }
 
@@ -139,6 +197,7 @@ public class HoopBot : MonoBehaviour
         {
             activeMoveX = 0f;
             activeMoveY = 0f;
+            hasReactedToState = false;
         }
     }
 

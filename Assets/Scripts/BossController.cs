@@ -38,6 +38,14 @@ public class BossController : MonoBehaviour
     [SerializeField] private float stealDistance = 0.55f;
     [SerializeField] private float stealBehindGrace = 0.25f;
 
+    [Header("Ataque (posse do boss)")]
+    [SerializeField] private Color fakeColor = new Color(1f, 0.9f, 0.1f);
+    [SerializeField] private float minIdleWait = 1.0f;
+    [SerializeField] private float maxIdleWait = 1.5f;
+    [SerializeField] private float windupDuration = 0.52f;
+    [SerializeField] private float stunDuration = 2.6f;
+    [SerializeField] private float fakeChance = 0.35f;
+
     [Header("Posição visual do personagem no sprite")]
     [SerializeField] private Vector3 visualOffset = new Vector3(0f, 0.53f, 0f);
 
@@ -46,6 +54,10 @@ public class BossController : MonoBehaviour
     public bool IsLunging => lunging;
 
     public Vector3 VisualPosition => transform.position + visualOffset;
+
+    public DodgeDirection RequiredDodge { get; private set; } = DodgeDirection.None;
+    public bool PlayerDodgedInWindow => playerDodgedInWindow;
+    public DodgeDirection LastPlayerDodge => lastPlayerDodge;
 
     private Vector3 startPosition;
     private Vector3 cachedInitialScale;
@@ -60,6 +72,10 @@ public class BossController : MonoBehaviour
     private float lungeTimer;
     private Vector3 lungeTargetPos;
     private float nextLungeTime;
+
+    private Coroutine attackCoroutine;
+    private bool playerDodgedInWindow;
+    private DodgeDirection lastPlayerDodge;
 
     private float LeadY
     {
@@ -256,6 +272,190 @@ public class BossController : MonoBehaviour
         CurrentState = BossState.Idle;
     }
 
+    public void StartBossAttack()
+    {
+        StopBossAttack();
+        ResetDodgeWindow();
+        attackCoroutine = StartCoroutine(BossAttackLoop());
+    }
+
+    public void StopBossAttack()
+    {
+        ResetDodgeWindow();
+        if (attackCoroutine != null)
+        {
+            StopCoroutine(attackCoroutine);
+            attackCoroutine = null;
+        }
+        transform.DOKill();
+        CurrentState = BossState.Idle;
+        ResetVisuals();
+    }
+
+    public void RegisterPlayerDodge(DodgeDirection direction)
+    {
+        playerDodgedInWindow = true;
+        lastPlayerDodge = direction;
+    }
+
+    public void ResetDodgeWindow()
+    {
+        playerDodgedInWindow = false;
+        lastPlayerDodge = DodgeDirection.None;
+    }
+
+    private bool StillAttacking()
+    {
+        return MatchManager.Instance != null && MatchManager.Instance.IsPlaying && MatchManager.Instance.BossPossession;
+    }
+
+    private IEnumerator BossAttackLoop()
+    {
+        while (StillAttacking())
+        {
+            CurrentState = BossState.Idle;
+            ResetDodgeWindow();
+            ResetVisuals();
+
+            if (HoopAudio.Instance != null) HoopAudio.Instance.PlayDribble();
+
+            Vector3 idleBase = transform.position;
+            transform.DOKill();
+            transform.DOMoveY(idleBase.y + 0.12f, 0.32f)
+                .SetLoops(2, LoopType.Yoyo)
+                .SetEase(Ease.InOutSine);
+
+            float idleTime = Random.Range(minIdleWait, maxIdleWait);
+            yield return new WaitForSeconds(idleTime);
+
+            if (!StillAttacking()) yield break;
+
+            bool isFake = Random.value < fakeChance;
+
+            if (isFake)
+            {
+                CurrentState = BossState.WindupFake;
+                RequiredDodge = DodgeDirection.None;
+                SetVisualState(fakeSprite, fakeColor);
+                transform.DOShakePosition(windupDuration, new Vector3(0.08f, 0.08f, 0), 15);
+
+                yield return new WaitForSeconds(windupDuration);
+
+                if (!StillAttacking()) yield break;
+
+                if (PlayerDodgedInWindow)
+                {
+                    yield return StartCoroutine(BossAttackScoreRoutine("CAIU NA FALSA! +2"));
+                    if (!StillAttacking()) yield break;
+                }
+                else
+                {
+                    if (VFXManager.Instance != null)
+                    {
+                        VFXManager.Instance.ShowFloatingText("FAKE READ!", Color.cyan, transform.position + new Vector3(0, 1.4f, 0), 1.2f);
+                    }
+                    MatchManager.Instance.ShowFeedback("FAKE READ!", Color.cyan);
+                    yield return new WaitForSeconds(0.4f);
+                    if (!StillAttacking()) yield break;
+                }
+            }
+            else
+            {
+                CurrentState = BossState.WindupAttack;
+                if (HoopAudio.Instance != null) HoopAudio.Instance.PlaySqueak();
+                DodgeDirection attackDir = Random.value < 0.5f ? DodgeDirection.Left : DodgeDirection.Right;
+                RequiredDodge = (attackDir == DodgeDirection.Left) ? DodgeDirection.Right : DodgeDirection.Left;
+
+                SetVisualState(attackSprite, attackColor);
+                float nudgeX = (attackDir == DodgeDirection.Left) ? -0.45f : 0.45f;
+                transform.DOKill();
+                transform.DOMoveX(transform.position.x + nudgeX, windupDuration * 0.5f).SetEase(Ease.OutQuad);
+
+                yield return new WaitForSeconds(windupDuration);
+
+                if (!StillAttacking()) yield break;
+
+                if (PlayerDodgedInWindow && LastPlayerDodge == RequiredDodge)
+                {
+                    yield return StartCoroutine(BossStunnedRoutine());
+                    if (!StillAttacking()) yield break;
+                }
+                else
+                {
+                    yield return StartCoroutine(BossAttackScoreRoutine("O TIJOLO BOTOU PRA DENTRO! +2"));
+                    if (!StillAttacking()) yield break;
+                }
+            }
+        }
+    }
+
+    private IEnumerator BossAttackScoreRoutine(string reason)
+    {
+        CurrentState = BossState.Scoring;
+        transform.DOKill();
+        Vector3 basePos = transform.position;
+
+        if (HoopAudio.Instance != null) HoopAudio.Instance.PlayCrowdOoh();
+
+        Vector3 hoopPos = new Vector3(0f, 2.4f, 0f);
+        if (VFXManager.Instance != null)
+        {
+            VFXManager.Instance.SpawnShockwave(hoopPos, new Color(1f, 0.25f, 0.25f), 3f);
+            VFXManager.Instance.SpawnImpactSparks(hoopPos, Color.red, 30);
+            VFXManager.Instance.ShowFloatingText("+2 O TIJOLO", Color.red, basePos + new Vector3(0, 1.4f, 0), 1.2f);
+        }
+
+        Sequence seq = DOTween.Sequence();
+        seq.Append(transform.DOScale(new Vector3(cachedInitialScale.x * 0.9f, cachedInitialScale.y * 1.25f, cachedInitialScale.z), 0.15f));
+        seq.Join(transform.DOMoveY(basePos.y + 0.6f, 0.2f).SetEase(Ease.OutQuad));
+        seq.Append(transform.DOMoveY(basePos.y, 0.18f).SetEase(Ease.InQuad));
+        seq.Append(transform.DOScale(cachedInitialScale, 0.1f));
+
+        MatchManager.Instance.AddBossScore(2, reason);
+
+        yield return new WaitForSeconds(0.55f);
+
+        MatchManager.Instance.EndBossPossession();
+    }
+
+    private IEnumerator BossStunnedRoutine()
+    {
+        CurrentState = BossState.Stunned;
+        RequiredDodge = DodgeDirection.None;
+        SetVisualState(stunnedSprite, stunnedColor);
+        if (HoopAudio.Instance != null) HoopAudio.Instance.PlayCrowdOoh();
+
+        if (VFXManager.Instance != null)
+        {
+            VFXManager.Instance.ShowFloatingText("ANKLE BREAKER!", new Color(1f, 0.3f, 0.85f), transform.position + new Vector3(0, 1.3f, 0), 1.25f);
+            VFXManager.Instance.SpawnImpactSparks(transform.position, Color.yellow, 8);
+        }
+
+        MatchManager.Instance.BeginBossStun(stunDuration);
+
+        transform.DOKill();
+        transform.localScale = cachedInitialScale;
+        transform.DOShakeRotation(stunDuration, new Vector3(0, 0, 14f), 10);
+
+        yield return new WaitForSeconds(stunDuration);
+
+        if (StillAttacking())
+        {
+            MatchManager.Instance.BossRecovered();
+            CurrentState = BossState.Idle;
+            ResetVisuals();
+        }
+    }
+
+    private void SetVisualState(Sprite sprite, Color color)
+    {
+        if (spriteRenderer != null)
+        {
+            if (sprite != null) spriteRenderer.sprite = sprite;
+            spriteRenderer.color = color;
+        }
+    }
+
     public void OnHitByPlayerAttack(AttackType attackType)
     {
         if (hitFlash != null) hitFlash.Flash(0.09f);
@@ -277,6 +477,7 @@ public class BossController : MonoBehaviour
         lunging = false;
         lungeDiving = false;
         nextLungeTime = 0f;
+        attackCoroutine = null;
         transform.DOKill();
         CurrentState = BossState.Idle;
         transform.position = startPosition;
@@ -292,5 +493,6 @@ public class BossController : MonoBehaviour
             if (idleSprite != null) spriteRenderer.sprite = idleSprite;
             spriteRenderer.color = normalColor;
         }
+        transform.localRotation = Quaternion.identity;
     }
 }

@@ -17,6 +17,13 @@ public enum PlayerMoveDir
     Down
 }
 
+public enum DodgeDirection
+{
+    None,
+    Left,
+    Right
+}
+
 public class PlayerController : MonoBehaviour
 {
     [SerializeField] private SpriteRenderer spriteRenderer;
@@ -39,6 +46,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float holdDurationThreshold = 0.26f;
     [SerializeField] private float shootLineY = 3.7f;
     [SerializeField] private float dunkLineY = 4.55f;
+
+    [Header("Desvio (posse do boss)")]
+    [SerializeField] private float dodgeDuration = 0.2f;
 
     [Header("Limites da quadra")]
     [SerializeField] private float minX = -1.9f;
@@ -68,6 +78,7 @@ public class PlayerController : MonoBehaviour
     private float pointerStartTime;
     private float lastDribbleT;
     private float lastMoveSign;
+    private bool isDodging;
 
     private void Awake()
     {
@@ -113,10 +124,79 @@ public class PlayerController : MonoBehaviour
         }
         if (isShooting) return;
 
+        if (MatchManager.Instance.BossPossession)
+        {
+            HandleGuardInput();
+            return;
+        }
+
         HandleKeyboard();
         HandlePointer();
         IntegrateMovement();
         DribbleFeedback();
+    }
+
+    private void HandleGuardInput()
+    {
+        var kb = Keyboard.current;
+        if (kb != null)
+        {
+            if (kb.aKey.wasPressedThisFrame || kb.leftArrowKey.wasPressedThisFrame)
+            {
+                PerformDodge(DodgeDirection.Left);
+                return;
+            }
+            if (kb.dKey.wasPressedThisFrame || kb.rightArrowKey.wasPressedThisFrame)
+            {
+                PerformDodge(DodgeDirection.Right);
+                return;
+            }
+            if (kb.spaceKey.wasPressedThisFrame)
+            {
+                pointerStartTime = Time.time;
+                ShowCharge();
+            }
+            if (kb.spaceKey.wasReleasedThisFrame)
+            {
+                float duration = Time.time - pointerStartTime;
+                HideCharge();
+                AttackType type = duration >= holdDurationThreshold ? AttackType.HoldDunk : AttackType.TapShot;
+                TryShoot(type);
+            }
+        }
+
+        var pointer = Pointer.current;
+        if (pointer == null) return;
+
+        if (pointer.press.wasPressedThisFrame)
+        {
+            pointerStartPos = pointer.position.ReadValue();
+            pointerStartTime = Time.time;
+            isPointerDown = true;
+            swipeHandled = false;
+            ShowCharge();
+        }
+        else if (pointer.press.isPressed && isPointerDown && !swipeHandled)
+        {
+            Vector2 currentPos = pointer.position.ReadValue();
+            Vector2 delta = currentPos - pointerStartPos;
+            if (Mathf.Abs(delta.x) > swipeThresholdPixels && Mathf.Abs(delta.x) > Mathf.Abs(delta.y))
+            {
+                swipeHandled = true;
+                HideCharge();
+                PerformDodge(delta.x < 0 ? DodgeDirection.Left : DodgeDirection.Right);
+            }
+        }
+        else if (pointer.press.wasReleasedThisFrame && isPointerDown)
+        {
+            bool wasSwipe = swipeHandled;
+            isPointerDown = false;
+            HideCharge();
+            if (wasSwipe) return;
+            float duration = Time.time - pointerStartTime;
+            AttackType type = duration >= holdDurationThreshold ? AttackType.HoldDunk : AttackType.TapShot;
+            TryShoot(type);
+        }
     }
 
     private void HandleKeyboard()
@@ -182,6 +262,70 @@ public class PlayerController : MonoBehaviour
         if (swipeHandled) return;
         AttackType type = duration >= holdDurationThreshold ? AttackType.HoldDunk : AttackType.TapShot;
         TryShoot(type);
+    }
+
+    public void PerformDodge(DodgeDirection direction)
+    {
+        if (MatchManager.Instance == null) return;
+        if (!MatchManager.Instance.BossPossession) return;
+        if (isDodging) return;
+        StartCoroutine(DodgeRoutine(direction));
+    }
+
+    private System.Collections.IEnumerator DodgeRoutine(DodgeDirection direction)
+    {
+        isDodging = true;
+
+        if (spriteRenderer != null)
+        {
+            if (direction == DodgeDirection.Left && dodgeLeftSprite != null) spriteRenderer.sprite = dodgeLeftSprite;
+            else if (direction == DodgeDirection.Right && dodgeRightSprite != null) spriteRenderer.sprite = dodgeRightSprite;
+        }
+
+        if (HoopAudio.Instance != null)
+        {
+            HoopAudio.Instance.PlaySqueak();
+            HoopAudio.Instance.PlayDodge();
+        }
+
+        if (VFXManager.Instance != null)
+        {
+            VFXManager.Instance.SpawnDust(transform.position + new Vector3(0, -2.5f, 0), 5);
+        }
+
+        if (MatchManager.Instance != null) MatchManager.Instance.OnPlayerDodge(direction);
+
+        transform.DOKill();
+        transform.localScale = initialScale;
+        transform.DOScale(new Vector3(initialScale.x * 1.1f, initialScale.y * 0.9f, initialScale.z), dodgeDuration * 0.5f)
+            .SetLoops(2, LoopType.Yoyo);
+
+        yield return new WaitForSeconds(dodgeDuration);
+
+        isDodging = false;
+        transform.DOKill();
+        transform.localScale = initialScale;
+        if (spriteRenderer != null && normalSprite != null) spriteRenderer.sprite = normalSprite;
+    }
+
+    public void EnterGuardMode()
+    {
+        velocity = Vector2.zero;
+        isPointerDown = false;
+        swipeHandled = false;
+        transform.DOKill();
+        transform.localScale = initialScale;
+    }
+
+    public void ExitGuardMode()
+    {
+        velocity = Vector2.zero;
+        isDodging = false;
+        isPointerDown = false;
+        swipeHandled = false;
+        transform.DOKill();
+        transform.localScale = initialScale;
+        if (spriteRenderer != null && normalSprite != null) spriteRenderer.sprite = normalSprite;
     }
 
     private void ApplyMove(PlayerMoveDir dir)
@@ -254,6 +398,7 @@ public class PlayerController : MonoBehaviour
 
     public void BotSetVelocity(Vector2 dir)
     {
+        if (MatchManager.Instance != null && MatchManager.Instance.BossPossession) return;
         if (isShooting) return;
         velocity.x = dir.x * lateralSpeed;
         velocity.y = dir.y * advanceSpeed;
@@ -270,7 +415,14 @@ public class PlayerController : MonoBehaviour
     {
         if (MatchManager.Instance == null) return;
         if (!MatchManager.Instance.IsPlaying || isShooting) return;
-        if (!MatchManager.Instance.HasBall) return;
+        if (MatchManager.Instance.BossPossession)
+        {
+            if (!MatchManager.Instance.IsBossStunned) return;
+        }
+        else if (!MatchManager.Instance.HasBall)
+        {
+            return;
+        }
         MatchManager.Instance.OnPlayerAttack(type);
     }
 
@@ -363,6 +515,7 @@ public class PlayerController : MonoBehaviour
         isShooting = false;
         isPointerDown = false;
         swipeHandled = false;
+        isDodging = false;
         velocity = Vector2.zero;
         transform.DOKill();
         transform.position = startPosition;
